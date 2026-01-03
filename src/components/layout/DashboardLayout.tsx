@@ -4,6 +4,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
+import NotificationBell from '@/components/notifications/NotificationBell';
 import { ThemeSwitcher } from '@/components/ui/ThemeSwitcher';
 import { 
   Zap, 
@@ -126,6 +127,7 @@ const DashboardLayout = () => {
       {/* Footer */}
       <div className="p-4 border-t border-sidebar-border space-y-2">
         <div className="flex items-center justify-center gap-2">
+          <NotificationBell />
           <LanguageSwitcher />
           <ThemeSwitcher />
         </div>
