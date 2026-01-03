@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { ThemeSwitcher } from '@/components/ui/ThemeSwitcher';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Zap } from 'lucide-react';
+import { Loader2, Zap, Building2 } from 'lucide-react';
 import { z } from 'zod';
 
 const loginSchema = z.object({
@@ -19,6 +19,7 @@ const loginSchema = z.object({
 
 const signupSchema = loginSchema.extend({
   fullName: z.string().min(2, 'Name must be at least 2 characters'),
+  companyName: z.string().min(2, 'Company name must be at least 2 characters'),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
@@ -26,7 +27,7 @@ const signupSchema = loginSchema.extend({
 });
 
 const Auth = () => {
-  const { t, dir } = useLanguage();
+  const { t, language, dir } = useLanguage();
   const { signIn, signUp, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -38,6 +39,7 @@ const Auth = () => {
     password: '',
     confirmPassword: '',
     fullName: '',
+    companyName: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -100,7 +102,7 @@ const Auth = () => {
           return;
         }
 
-        const { error } = await signUp(formData.email, formData.password, formData.fullName);
+        const { error } = await signUp(formData.email, formData.password, formData.fullName, formData.companyName);
         if (error) {
           toast({
             variant: 'destructive',
@@ -160,27 +162,53 @@ const Auth = () => {
               {isLogin ? t('auth.welcomeBack') : t('auth.createAccount')}
             </CardTitle>
             <CardDescription>
-              {isLogin ? t('auth.login') : t('auth.signup')}
+              {isLogin 
+                ? t('auth.login') 
+                : (language === 'ar' ? 'سجّل شركتك وابدأ الآن' : 'Register your company and start now')
+              }
             </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
               {!isLogin && (
-                <div className="space-y-2">
-                  <Label htmlFor="fullName">{t('auth.fullName')}</Label>
-                  <Input
-                    id="fullName"
-                    name="fullName"
-                    type="text"
-                    value={formData.fullName}
-                    onChange={handleChange}
-                    className={errors.fullName ? 'border-destructive' : ''}
-                    disabled={loading}
-                  />
-                  {errors.fullName && (
-                    <p className="text-sm text-destructive">{errors.fullName}</p>
-                  )}
-                </div>
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="companyName" className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4 text-primary" />
+                      {language === 'ar' ? 'اسم الشركة' : 'Company Name'}
+                    </Label>
+                    <Input
+                      id="companyName"
+                      name="companyName"
+                      type="text"
+                      placeholder={language === 'ar' ? 'مثال: شركة التميز للتسويق' : 'e.g., Excellence Marketing Co.'}
+                      value={formData.companyName}
+                      onChange={handleChange}
+                      className={errors.companyName ? 'border-destructive' : ''}
+                      disabled={loading}
+                    />
+                    {errors.companyName && (
+                      <p className="text-sm text-destructive">{errors.companyName}</p>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="fullName">{t('auth.fullName')}</Label>
+                    <Input
+                      id="fullName"
+                      name="fullName"
+                      type="text"
+                      placeholder={language === 'ar' ? 'اسمك الكامل' : 'Your full name'}
+                      value={formData.fullName}
+                      onChange={handleChange}
+                      className={errors.fullName ? 'border-destructive' : ''}
+                      disabled={loading}
+                    />
+                    {errors.fullName && (
+                      <p className="text-sm text-destructive">{errors.fullName}</p>
+                    )}
+                  </div>
+                </>
               )}
 
               <div className="space-y-2">
@@ -189,6 +217,7 @@ const Auth = () => {
                   id="email"
                   name="email"
                   type="email"
+                  placeholder="example@company.com"
                   value={formData.email}
                   onChange={handleChange}
                   className={errors.email ? 'border-destructive' : ''}
@@ -206,6 +235,7 @@ const Auth = () => {
                   id="password"
                   name="password"
                   type="password"
+                  placeholder="••••••••"
                   value={formData.password}
                   onChange={handleChange}
                   className={errors.password ? 'border-destructive' : ''}
@@ -224,6 +254,7 @@ const Auth = () => {
                     id="confirmPassword"
                     name="confirmPassword"
                     type="password"
+                    placeholder="••••••••"
                     value={formData.confirmPassword}
                     onChange={handleChange}
                     className={errors.confirmPassword ? 'border-destructive' : ''}
@@ -236,13 +267,24 @@ const Auth = () => {
                 </div>
               )}
 
+              {!isLogin && (
+                <div className="p-3 bg-primary/5 rounded-lg border border-primary/20">
+                  <p className="text-xs text-muted-foreground">
+                    {language === 'ar' 
+                      ? '✨ ستصبح المدير العام (Super Admin) لشركتك تلقائياً'
+                      : '✨ You will automatically become the Super Admin of your company'
+                    }
+                  </p>
+                </div>
+              )}
+
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : isLogin ? (
                   t('auth.login')
                 ) : (
-                  t('auth.signup')
+                  language === 'ar' ? 'إنشاء الشركة والحساب' : 'Create Company & Account'
                 )}
               </Button>
             </form>
