@@ -13,17 +13,15 @@ import {
   ClipboardList,
   Calendar,
   FileText,
-  Bell,
   LayoutDashboard,
   AlertTriangle,
   Scale,
   Building2,
   BarChart3,
   Brain,
-  AlertOctagon,
   Settings,
   Menu,
-  X
+  Users,
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
@@ -42,17 +40,17 @@ const DashboardLayout = () => {
         return [
           { title: t('dashboard.companyHealth'), icon: Building2, path: '/dashboard' },
           { title: t('dashboard.allTasks'), icon: ClipboardList, path: '/dashboard/tasks' },
+          { title: t('team.management'), icon: Users, path: '/dashboard/team-management' },
           { title: t('dashboard.departmentLoad'), icon: BarChart3, path: '/dashboard/departments' },
-          { title: t('dashboard.aiInsights'), icon: Brain, path: '/dashboard/ai-insights' },
           { title: t('dashboard.companySettings'), icon: Settings, path: '/dashboard/settings' },
         ];
       case 'admin':
         return [
           { title: t('dashboard.taskDistribution'), icon: LayoutDashboard, path: '/dashboard' },
           { title: t('dashboard.allTasks'), icon: ClipboardList, path: '/dashboard/tasks' },
+          { title: t('team.employees'), icon: Users, path: '/dashboard/employees' },
           { title: t('dashboard.delayedTasks'), icon: AlertTriangle, path: '/dashboard/delayed' },
           { title: t('dashboard.loadBalance'), icon: Scale, path: '/dashboard/balance' },
-          { title: t('dashboard.teamSettings'), icon: Settings, path: '/dashboard/team' },
         ];
       default:
         return [
