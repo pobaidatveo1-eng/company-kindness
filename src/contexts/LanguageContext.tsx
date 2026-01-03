@@ -120,6 +120,11 @@ const translations: Record<Language, Record<string, string>> = {
     'departments.social_media': 'التواصل الاجتماعي',
     'departments.video': 'الفيديو',
     
+    // Navigation
+    'nav.clients': 'العملاء',
+    'nav.contracts': 'العقود',
+    'nav.departments': 'الأقسام',
+    
     // Common
     'common.save': 'حفظ',
     'common.cancel': 'إلغاء',
@@ -253,6 +258,11 @@ const translations: Record<Language, Record<string, string>> = {
     'departments.content': 'Content',
     'departments.social_media': 'Social Media',
     'departments.video': 'Video',
+    
+    // Navigation
+    'nav.clients': 'Clients',
+    'nav.contracts': 'Contracts',
+    'nav.departments': 'Departments',
     
     // Common
     'common.save': 'Save',
