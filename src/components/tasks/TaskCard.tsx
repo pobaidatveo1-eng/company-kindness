@@ -30,6 +30,7 @@ interface TaskCardProps {
   onStatusChange: (id: string, status: TaskStatus) => void;
   onEdit: (task: Task) => void;
   onDelete: (id: string) => void;
+  onView: (task: Task) => void;
   canManage: boolean;
 }
 
@@ -38,6 +39,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
   onStatusChange, 
   onEdit, 
   onDelete,
+  onView,
   canManage 
 }) => {
   const { language } = useLanguage();
@@ -111,7 +113,10 @@ const TaskCard: React.FC<TaskCardProps> = ({
   const isOverdue = task.due_date && new Date(task.due_date) < new Date() && task.status !== 'completed';
 
   return (
-    <Card className={`transition-all hover:shadow-md ${isOverdue ? 'border-destructive/50' : ''}`}>
+    <Card 
+      className={`transition-all hover:shadow-md cursor-pointer ${isOverdue ? 'border-destructive/50' : ''}`}
+      onClick={() => onView(task)}
+    >
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
@@ -158,37 +163,42 @@ const TaskCard: React.FC<TaskCardProps> = ({
           {/* Actions */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-8 w-8 flex-shrink-0"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
               {task.status === 'pending' && (
-                <DropdownMenuItem onClick={() => onStatusChange(task.id, 'in_progress')}>
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onStatusChange(task.id, 'in_progress'); }}>
                   <PlayCircle className="h-4 w-4 me-2" />
                   {isArabic ? 'بدء العمل' : 'Start Work'}
                 </DropdownMenuItem>
               )}
               {task.status === 'in_progress' && (
-                <DropdownMenuItem onClick={() => onStatusChange(task.id, 'completed')}>
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onStatusChange(task.id, 'completed'); }}>
                   <CheckCircle2 className="h-4 w-4 me-2" />
                   {isArabic ? 'إكمال المهمة' : 'Complete Task'}
                 </DropdownMenuItem>
               )}
               {task.status !== 'pending' && task.status !== 'cancelled' && (
-                <DropdownMenuItem onClick={() => onStatusChange(task.id, 'pending')}>
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onStatusChange(task.id, 'pending'); }}>
                   <AlertTriangle className="h-4 w-4 me-2" />
                   {isArabic ? 'إعادة للمعلق' : 'Move to Pending'}
                 </DropdownMenuItem>
               )}
               {canManage && (
                 <>
-                  <DropdownMenuItem onClick={() => onEdit(task)}>
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(task); }}>
                     <Edit className="h-4 w-4 me-2" />
                     {isArabic ? 'تعديل' : 'Edit'}
                   </DropdownMenuItem>
                   <DropdownMenuItem 
-                    onClick={() => onDelete(task.id)}
+                    onClick={(e) => { e.stopPropagation(); onDelete(task.id); }}
                     className="text-destructive focus:text-destructive"
                   >
                     <Trash2 className="h-4 w-4 me-2" />

@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Plus, Search, Filter } from 'lucide-react';
 import TaskCard from './TaskCard';
 import CreateTaskDialog from './CreateTaskDialog';
+import TaskDetailDialog from './TaskDetailDialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -40,6 +41,7 @@ const TaskList: React.FC = () => {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editTask, setEditTask] = useState<Task | null>(null);
   const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null);
+  const [viewTask, setViewTask] = useState<Task | null>(null);
 
   const filteredTasks = useMemo(() => {
     return tasks.filter((task) => {
@@ -193,6 +195,7 @@ const TaskList: React.FC = () => {
                     onStatusChange={handleStatusChange}
                     onEdit={handleEdit}
                     onDelete={handleDelete}
+                    onView={setViewTask}
                     canManage={canManage || task.assigned_to === profile?.id}
                   />
                 ))}
@@ -233,6 +236,13 @@ const TaskList: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Task Detail Dialog */}
+      <TaskDetailDialog
+        task={viewTask}
+        open={!!viewTask}
+        onOpenChange={(open) => !open && setViewTask(null)}
+      />
     </div>
   );
 };
