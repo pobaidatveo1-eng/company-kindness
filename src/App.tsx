@@ -19,6 +19,8 @@ import AIInsights from "./pages/AIInsights";
 import Events from "./pages/Events";
 import ManualItems from "./pages/ManualItems";
 import MyAccount from "./pages/MyAccount";
+import TeamManagement from "./pages/TeamManagement";
+import Employees from "./pages/Employees";
 import DashboardLayout from "./components/layout/DashboardLayout";
 import NotFound from "./pages/NotFound";
 
@@ -48,6 +50,8 @@ const App = () => (
                   <Route path="events" element={<Events />} />
                   <Route path="manual" element={<ManualItems />} />
                   <Route path="account" element={<MyAccount />} />
+                  <Route path="team-management" element={<TeamManagement />} />
+                  <Route path="employees" element={<Employees />} />
                 </Route>
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
