@@ -37,6 +37,7 @@ const translations: Record<Language, Record<string, string>> = {
     // Dashboard
     'dashboard.title': 'لوحة التحكم',
     'dashboard.myTasks': 'مهامي اليوم',
+    'dashboard.allTasks': 'جميع المهام',
     'dashboard.upcomingEvents': 'المواعيد القادمة',
     'dashboard.manualItems': 'البنود اليدوية',
     'dashboard.notifications': 'الإشعارات',
@@ -107,6 +108,7 @@ const translations: Record<Language, Record<string, string>> = {
     // Dashboard
     'dashboard.title': 'Dashboard',
     'dashboard.myTasks': 'My Tasks Today',
+    'dashboard.allTasks': 'All Tasks',
     'dashboard.upcomingEvents': 'Upcoming Events',
     'dashboard.manualItems': 'Manual Items',
     'dashboard.notifications': 'Notifications',
