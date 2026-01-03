@@ -47,6 +47,98 @@ export type Database = {
         }
         Relationships: []
       }
+      company_departments: {
+        Row: {
+          color: string | null
+          company_id: string
+          created_at: string
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          name_ar: string | null
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          company_id: string
+          created_at?: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          name_ar?: string | null
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          company_id?: string
+          created_at?: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          name_ar?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_departments_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_titles: {
+        Row: {
+          company_id: string
+          created_at: string
+          department_id: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          name_ar: string | null
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          department_id?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          name_ar?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          department_id?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          name_ar?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_titles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_titles_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "company_departments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notifications: {
         Row: {
           created_at: string
@@ -107,6 +199,7 @@ export type Database = {
           full_name_ar: string | null
           id: string
           is_active: boolean | null
+          job_title_id: string | null
           phone: string | null
           preferred_language: string | null
           updated_at: string
@@ -121,6 +214,7 @@ export type Database = {
           full_name_ar?: string | null
           id?: string
           is_active?: boolean | null
+          job_title_id?: string | null
           phone?: string | null
           preferred_language?: string | null
           updated_at?: string
@@ -135,6 +229,7 @@ export type Database = {
           full_name_ar?: string | null
           id?: string
           is_active?: boolean | null
+          job_title_id?: string | null
           phone?: string | null
           preferred_language?: string | null
           updated_at?: string
@@ -146,6 +241,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_job_title_id_fkey"
+            columns: ["job_title_id"]
+            isOneToOne: false
+            referencedRelation: "job_titles"
             referencedColumns: ["id"]
           },
         ]
@@ -192,6 +294,47 @@ export type Database = {
           },
         ]
       }
+      task_types: {
+        Row: {
+          color: string | null
+          company_id: string
+          created_at: string
+          id: string
+          is_active: boolean | null
+          name: string
+          name_ar: string | null
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          company_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          name_ar?: string | null
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          name_ar?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_types_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           assigned_to: string | null
@@ -206,6 +349,7 @@ export type Database = {
           id: string
           priority: Database["public"]["Enums"]["task_priority"]
           status: Database["public"]["Enums"]["task_status"]
+          task_type_id: string | null
           title: string
           title_ar: string | null
           updated_at: string
@@ -223,6 +367,7 @@ export type Database = {
           id?: string
           priority?: Database["public"]["Enums"]["task_priority"]
           status?: Database["public"]["Enums"]["task_status"]
+          task_type_id?: string | null
           title: string
           title_ar?: string | null
           updated_at?: string
@@ -240,6 +385,7 @@ export type Database = {
           id?: string
           priority?: Database["public"]["Enums"]["task_priority"]
           status?: Database["public"]["Enums"]["task_status"]
+          task_type_id?: string | null
           title?: string
           title_ar?: string | null
           updated_at?: string
@@ -264,6 +410,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_task_type_id_fkey"
+            columns: ["task_type_id"]
+            isOneToOne: false
+            referencedRelation: "task_types"
             referencedColumns: ["id"]
           },
         ]

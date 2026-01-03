@@ -42,6 +42,7 @@ const DashboardLayout = () => {
           { title: t('dashboard.allTasks'), icon: ClipboardList, path: '/dashboard/tasks' },
           { title: t('nav.clients'), icon: Users, path: '/dashboard/clients' },
           { title: t('nav.contracts'), icon: Briefcase, path: '/dashboard/contracts' },
+          { title: t('dashboard.aiInsights'), icon: BarChart3, path: '/dashboard/ai-insights' },
           { title: t('dashboard.companySettings'), icon: Settings, path: '/dashboard/settings' },
         ];
       case 'admin':
@@ -51,6 +52,7 @@ const DashboardLayout = () => {
           { title: t('nav.clients'), icon: Users, path: '/dashboard/clients' },
           { title: t('nav.contracts'), icon: Briefcase, path: '/dashboard/contracts' },
           { title: t('dashboard.loadBalance'), icon: Scale, path: '/dashboard/balance' },
+          { title: t('dashboard.aiInsights'), icon: BarChart3, path: '/dashboard/ai-insights' },
         ];
       default:
         return [
