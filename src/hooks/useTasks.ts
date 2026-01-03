@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useEffect } from 'react';
+import { sanitizeError } from '@/lib/errorHandler';
 
 export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
@@ -136,7 +137,7 @@ export const useTasks = () => {
       toast({ title: 'تم إنشاء المهمة بنجاح' });
     },
     onError: (error) => {
-      toast({ title: 'خطأ في إنشاء المهمة', description: error.message, variant: 'destructive' });
+      toast({ title: 'خطأ في إنشاء المهمة', description: sanitizeError(error), variant: 'destructive' });
     },
   });
 
@@ -187,7 +188,7 @@ export const useTasks = () => {
       toast({ title: 'تم تحديث المهمة بنجاح' });
     },
     onError: (error) => {
-      toast({ title: 'خطأ في تحديث المهمة', description: error.message, variant: 'destructive' });
+      toast({ title: 'خطأ في تحديث المهمة', description: sanitizeError(error), variant: 'destructive' });
     },
   });
 
@@ -205,7 +206,7 @@ export const useTasks = () => {
       toast({ title: 'تم حذف المهمة بنجاح' });
     },
     onError: (error) => {
-      toast({ title: 'خطأ في حذف المهمة', description: error.message, variant: 'destructive' });
+      toast({ title: 'خطأ في حذف المهمة', description: sanitizeError(error), variant: 'destructive' });
     },
   });
 
