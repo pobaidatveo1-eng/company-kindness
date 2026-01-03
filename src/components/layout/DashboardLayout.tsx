@@ -40,25 +40,25 @@ const DashboardLayout = () => {
       case 'super_admin':
         return [
           { title: t('dashboard.companyHealth'), icon: Building2, path: '/dashboard' },
+          { title: t('dashboard.allTasks'), icon: ClipboardList, path: '/dashboard/tasks' },
           { title: t('dashboard.departmentLoad'), icon: BarChart3, path: '/dashboard/departments' },
           { title: t('dashboard.aiInsights'), icon: Brain, path: '/dashboard/ai-insights' },
-          { title: t('dashboard.risks'), icon: AlertOctagon, path: '/dashboard/risks' },
           { title: t('dashboard.companySettings'), icon: Settings, path: '/dashboard/settings' },
         ];
       case 'admin':
         return [
           { title: t('dashboard.taskDistribution'), icon: LayoutDashboard, path: '/dashboard' },
+          { title: t('dashboard.allTasks'), icon: ClipboardList, path: '/dashboard/tasks' },
           { title: t('dashboard.delayedTasks'), icon: AlertTriangle, path: '/dashboard/delayed' },
           { title: t('dashboard.loadBalance'), icon: Scale, path: '/dashboard/balance' },
-          { title: t('dashboard.alerts'), icon: Bell, path: '/dashboard/alerts' },
           { title: t('dashboard.teamSettings'), icon: Settings, path: '/dashboard/team' },
         ];
       default:
         return [
           { title: t('dashboard.myTasks'), icon: ClipboardList, path: '/dashboard' },
+          { title: t('dashboard.allTasks'), icon: ClipboardList, path: '/dashboard/tasks' },
           { title: t('dashboard.upcomingEvents'), icon: Calendar, path: '/dashboard/events' },
           { title: t('dashboard.manualItems'), icon: FileText, path: '/dashboard/manual' },
-          { title: t('dashboard.notifications'), icon: Bell, path: '/dashboard/notifications' },
           { title: t('dashboard.myAccount'), icon: User, path: '/dashboard/account' },
         ];
     }
