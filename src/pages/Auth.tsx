@@ -11,6 +11,7 @@ import { ThemeSwitcher } from '@/components/ui/ThemeSwitcher';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Zap, Building2 } from 'lucide-react';
 import { z } from 'zod';
+import { sanitizeError } from '@/lib/errorHandler';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -80,7 +81,7 @@ const Auth = () => {
           toast({
             variant: 'destructive',
             title: t('auth.loginError'),
-            description: error.message,
+            description: sanitizeError(error),
           });
         } else {
           toast({
@@ -107,7 +108,7 @@ const Auth = () => {
           toast({
             variant: 'destructive',
             title: t('auth.signupError'),
-            description: error.message,
+            description: sanitizeError(error),
           });
         } else {
           toast({
