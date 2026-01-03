@@ -53,7 +53,7 @@ const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
 }) => {
   const { language } = useLanguage();
   const isArabic = language === 'ar';
-  const { data: teamMembers = [] } = useTeamMembers();
+  const { teamMembers } = useTeamMembers();
 
   const departments = [
     { value: 'design', label: isArabic ? 'التصميم' : 'Design' },

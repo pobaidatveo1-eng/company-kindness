@@ -220,23 +220,36 @@ export const useTasks = () => {
   };
 };
 
+export interface TeamMember {
+  id: string;
+  full_name: string;
+  full_name_ar: string | null;
+  department: string | null;
+  phone: string | null;
+  is_active: boolean;
+}
+
 export const useTeamMembers = () => {
   const { profile } = useAuth();
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ['team-members', profile?.company_id],
     queryFn: async () => {
       if (!profile?.company_id) return [];
 
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, full_name, full_name_ar, department')
-        .eq('company_id', profile.company_id)
-        .eq('is_active', true);
+        .select('id, full_name, full_name_ar, department, phone, is_active')
+        .eq('company_id', profile.company_id);
 
       if (error) throw error;
-      return data;
+      return data as TeamMember[];
     },
     enabled: !!profile?.company_id,
   });
+
+  return {
+    teamMembers: query.data || [],
+    isLoading: query.isLoading,
+  };
 };
