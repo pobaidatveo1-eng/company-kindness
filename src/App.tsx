@@ -10,6 +10,15 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Tasks from "./pages/Tasks";
+import Departments from "./pages/Departments";
+import DelayedTasks from "./pages/DelayedTasks";
+import LoadBalance from "./pages/LoadBalance";
+import TeamSettings from "./pages/TeamSettings";
+import CompanySettings from "./pages/CompanySettings";
+import AIInsights from "./pages/AIInsights";
+import Events from "./pages/Events";
+import ManualItems from "./pages/ManualItems";
+import MyAccount from "./pages/MyAccount";
 import DashboardLayout from "./components/layout/DashboardLayout";
 import NotFound from "./pages/NotFound";
 
@@ -30,6 +39,15 @@ const App = () => (
                 <Route path="/dashboard" element={<DashboardLayout />}>
                   <Route index element={<Dashboard />} />
                   <Route path="tasks" element={<Tasks />} />
+                  <Route path="departments" element={<Departments />} />
+                  <Route path="delayed" element={<DelayedTasks />} />
+                  <Route path="balance" element={<LoadBalance />} />
+                  <Route path="team" element={<TeamSettings />} />
+                  <Route path="settings" element={<CompanySettings />} />
+                  <Route path="ai-insights" element={<AIInsights />} />
+                  <Route path="events" element={<Events />} />
+                  <Route path="manual" element={<ManualItems />} />
+                  <Route path="account" element={<MyAccount />} />
                 </Route>
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
