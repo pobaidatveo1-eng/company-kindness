@@ -9,11 +9,12 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { Settings, Building2, Palette, Save, Loader2, Plus, Trash2, Edit, Briefcase, ClipboardList } from 'lucide-react';
+import { Settings, Building2, Palette, Save, Loader2, Plus, Trash2, Edit, Briefcase, ClipboardList, Users, UserPlus, Shield, User, MoreHorizontal, UserCheck, UserX } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCompanyDepartments, useTaskTypes, useJobTitles, CompanyDepartment, TaskType, JobTitle } from '@/hooks/useCompanySettings';
 import { Badge } from '@/components/ui/badge';
+import { EmployeesTab } from '@/components/settings/EmployeesTab';
 
 const CompanySettings = () => {
   const { language } = useLanguage();
@@ -153,10 +154,14 @@ const CompanySettings = () => {
       </div>
 
       <Tabs defaultValue="company" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="company">
             <Building2 className="h-4 w-4 me-2" />
             {isArabic ? 'الشركة' : 'Company'}
+          </TabsTrigger>
+          <TabsTrigger value="employees">
+            <Users className="h-4 w-4 me-2" />
+            {isArabic ? 'الموظفين' : 'Employees'}
           </TabsTrigger>
           <TabsTrigger value="departments">
             <Building2 className="h-4 w-4 me-2" />
@@ -237,6 +242,11 @@ const CompanySettings = () => {
               </Button>
             </div>
           </form>
+        </TabsContent>
+
+        {/* Employees Tab */}
+        <TabsContent value="employees">
+          <EmployeesTab />
         </TabsContent>
 
         {/* Departments Tab */}
