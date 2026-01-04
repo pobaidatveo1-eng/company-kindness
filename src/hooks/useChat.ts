@@ -149,7 +149,8 @@ export const useCreateChatRoom = () => {
     mutationFn: async ({ name, name_ar, room_type }: { name: string; name_ar?: string; room_type: string }) => {
       if (!profile?.company_id || !profile?.id) throw new Error('Missing company or profile');
 
-      const { data, error } = await supabase
+      // Create the chat room
+      const { data: room, error: roomError } = await supabase
         .from('chat_rooms')
         .insert({
           name,
@@ -161,8 +162,23 @@ export const useCreateChatRoom = () => {
         .select()
         .single();
 
-      if (error) throw error;
-      return data;
+      if (roomError) throw roomError;
+
+      // Add the creator as a member of the room
+      const { error: memberError } = await supabase
+        .from('chat_room_members')
+        .insert({
+          room_id: room.id,
+          user_id: profile.id,
+          is_admin: true,
+        });
+
+      if (memberError) {
+        console.error('Error adding member:', memberError);
+        // Don't throw - room was created successfully
+      }
+
+      return room;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['chat-rooms'] });
