@@ -12,10 +12,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Calendar, Clock, MapPin, Users, Video, FileText, CheckCircle, XCircle, Loader2, Bell, Send } from 'lucide-react';
-import { format, isToday, isTomorrow, isThisWeek, isPast } from 'date-fns';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Plus, Calendar as CalendarIcon, Clock, MapPin, Users, Video, CheckCircle, Loader2, Bell, Send } from 'lucide-react';
+import { format, isToday, isPast, parse, set } from 'date-fns';
 import { ar } from 'date-fns/locale';
 import { toast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 const statusColors: Record<MeetingStatus, string> = {
   scheduled: 'bg-blue-500',
@@ -38,6 +42,25 @@ const meetingTypeLabels: Record<string, { ar: string; en: string }> = {
   review: { ar: 'مراجعة', en: 'Review' },
 };
 
+// Generate time options in 12-hour format
+const generateTimeOptions = () => {
+  const options = [];
+  for (let hour = 0; hour < 24; hour++) {
+    for (let minute = 0; minute < 60; minute += 15) {
+      const hour12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+      const period = hour < 12 ? 'AM' : 'PM';
+      const periodAr = hour < 12 ? 'ص' : 'م';
+      const timeLabel = `${hour12}:${minute.toString().padStart(2, '0')} ${period}`;
+      const timeLabelAr = `${hour12}:${minute.toString().padStart(2, '0')} ${periodAr}`;
+      const value = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+      options.push({ value, label: timeLabel, labelAr: timeLabelAr });
+    }
+  }
+  return options;
+};
+
+const timeOptions = generateTimeOptions();
+
 const Meetings = () => {
   const { language } = useLanguage();
   const { meetings, isLoading, createMeeting, updateMeeting, isCreating } = useMeetings();
@@ -48,17 +71,18 @@ const Meetings = () => {
   const [activeTab, setActiveTab] = useState('upcoming');
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [meetingToInvite, setMeetingToInvite] = useState<Meeting | null>(null);
-  const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
+  const [selectedEmployeesForInvite, setSelectedEmployeesForInvite] = useState<string[]>([]);
 
-  const [formData, setFormData] = useState<CreateMeetingData>({
-    title: '',
-    description: '',
-    meeting_type: 'general',
-    start_time: '',
-    end_time: '',
-    location: '',
-    agenda: '',
-  });
+  // Form state
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [meetingType, setMeetingType] = useState('general');
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [selectedTime, setSelectedTime] = useState('09:00');
+  const [location, setLocation] = useState('');
+  const [agenda, setAgenda] = useState('');
+  const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
 
   const upcomingMeetings = meetings.filter(m => 
     m.status === 'scheduled' && !isPast(new Date(m.start_time))
@@ -72,36 +96,89 @@ const Meetings = () => {
     m.status === 'completed'
   );
 
-  const handleSubmit = () => {
-    if (selectedMeeting) {
-      updateMeeting({ id: selectedMeeting.id, ...formData });
-    } else {
-      createMeeting(formData);
-    }
-    setIsCreateDialogOpen(false);
+  const resetForm = () => {
+    setTitle('');
+    setDescription('');
+    setMeetingType('general');
+    setSelectedDate(undefined);
+    setSelectedTime('09:00');
+    setLocation('');
+    setAgenda('');
+    setSelectedEmployees([]);
     setSelectedMeeting(null);
-    setFormData({
-      title: '',
-      description: '',
-      meeting_type: 'general',
-      start_time: '',
-      end_time: '',
-      location: '',
-      agenda: '',
-    });
+  };
+
+  const handleSubmit = async () => {
+    if (!selectedDate || !title) {
+      toast({
+        title: language === 'ar' ? 'خطأ' : 'Error',
+        description: language === 'ar' ? 'يرجى إدخال العنوان والتاريخ' : 'Please enter title and date',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Combine date and time
+    const [hours, minutes] = selectedTime.split(':').map(Number);
+    const startDateTime = set(selectedDate, { hours, minutes, seconds: 0 });
+
+    const meetingData: CreateMeetingData = {
+      title,
+      description,
+      meeting_type: meetingType,
+      start_time: startDateTime.toISOString(),
+      location,
+      agenda,
+    };
+
+    if (selectedMeeting) {
+      updateMeeting({ id: selectedMeeting.id, ...meetingData });
+    } else {
+      createMeeting(meetingData);
+      
+      // Send notifications to selected employees
+      if (selectedEmployees.length > 0) {
+        const hour12 = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+        const period = hours < 12 ? (language === 'ar' ? 'ص' : 'AM') : (language === 'ar' ? 'م' : 'PM');
+        const timeStr = `${hour12}:${minutes.toString().padStart(2, '0')} ${period}`;
+        const dateStr = format(startDateTime, 'dd/MM/yyyy');
+
+        selectedEmployees.forEach(employeeId => {
+          createNotification({
+            user_id: employeeId,
+            type: 'meeting_invitation',
+            title: 'New Meeting Invitation',
+            title_ar: 'دعوة لاجتماع جديد',
+            message: `You have been invited to: ${title} on ${dateStr} at ${timeStr}`,
+            message_ar: `تم دعوتك لحضور اجتماع: ${title} يوم ${dateStr} الساعة ${timeStr}`,
+            priority: 'high',
+          });
+        });
+
+        toast({
+          title: language === 'ar' ? 'تم الإنشاء والدعوة' : 'Created & Invited',
+          description: language === 'ar' 
+            ? `تم إنشاء الاجتماع وإرسال دعوة لـ ${selectedEmployees.length} موظف`
+            : `Meeting created and ${selectedEmployees.length} employee(s) invited`,
+        });
+      }
+    }
+
+    setIsCreateDialogOpen(false);
+    resetForm();
   };
 
   const openEditDialog = (meeting: Meeting) => {
     setSelectedMeeting(meeting);
-    setFormData({
-      title: meeting.title,
-      description: meeting.description || '',
-      meeting_type: meeting.meeting_type,
-      start_time: meeting.start_time.slice(0, 16),
-      end_time: meeting.end_time?.slice(0, 16) || '',
-      location: meeting.location || '',
-      agenda: meeting.agenda || '',
-    });
+    setTitle(meeting.title);
+    setDescription(meeting.description || '');
+    setMeetingType(meeting.meeting_type);
+    const meetingDate = new Date(meeting.start_time);
+    setSelectedDate(meetingDate);
+    setSelectedTime(format(meetingDate, 'HH:mm'));
+    setLocation(meeting.location || '');
+    setAgenda(meeting.agenda || '');
+    setSelectedEmployees([]);
     setIsCreateDialogOpen(true);
   };
 
@@ -111,21 +188,29 @@ const Meetings = () => {
 
   const openInviteDialog = (meeting: Meeting) => {
     setMeetingToInvite(meeting);
-    setSelectedEmployees([]);
+    setSelectedEmployeesForInvite([]);
     setInviteDialogOpen(true);
   };
 
   const sendMeetingReminder = () => {
-    if (!meetingToInvite || selectedEmployees.length === 0) return;
+    if (!meetingToInvite || selectedEmployeesForInvite.length === 0) return;
 
-    selectedEmployees.forEach(employeeId => {
+    const meetingDate = new Date(meetingToInvite.start_time);
+    const hours = meetingDate.getHours();
+    const minutes = meetingDate.getMinutes();
+    const hour12 = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+    const period = hours < 12 ? (language === 'ar' ? 'ص' : 'AM') : (language === 'ar' ? 'م' : 'PM');
+    const timeStr = `${hour12}:${minutes.toString().padStart(2, '0')} ${period}`;
+    const dateStr = format(meetingDate, 'dd/MM/yyyy');
+
+    selectedEmployeesForInvite.forEach(employeeId => {
       createNotification({
         user_id: employeeId,
         type: 'meeting_reminder',
         title: 'Meeting Reminder',
         title_ar: 'تذكير باجتماع',
-        message: `You have been invited to: ${meetingToInvite.title} at ${format(new Date(meetingToInvite.start_time), 'dd/MM/yyyy HH:mm')}`,
-        message_ar: `تم دعوتك لحضور: ${meetingToInvite.title} في ${format(new Date(meetingToInvite.start_time), 'dd/MM/yyyy HH:mm')}`,
+        message: `Reminder: ${meetingToInvite.title} on ${dateStr} at ${timeStr}`,
+        message_ar: `تذكير: ${meetingToInvite.title} يوم ${dateStr} الساعة ${timeStr}`,
         reference_id: meetingToInvite.id,
         reference_type: 'meeting',
         priority: 'high',
@@ -135,13 +220,22 @@ const Meetings = () => {
     toast({
       title: language === 'ar' ? 'تم إرسال الدعوات' : 'Invitations Sent',
       description: language === 'ar' 
-        ? `تم إرسال ${selectedEmployees.length} دعوة`
-        : `${selectedEmployees.length} invitation(s) sent`,
+        ? `تم إرسال ${selectedEmployeesForInvite.length} دعوة`
+        : `${selectedEmployeesForInvite.length} invitation(s) sent`,
     });
 
     setInviteDialogOpen(false);
     setMeetingToInvite(null);
-    setSelectedEmployees([]);
+    setSelectedEmployeesForInvite([]);
+  };
+
+  const formatMeetingTime = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    const hour12 = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+    const period = hours < 12 ? (language === 'ar' ? 'ص' : 'AM') : (language === 'ar' ? 'م' : 'PM');
+    return `${hour12}:${minutes.toString().padStart(2, '0')} ${period}`;
   };
 
   if (isLoading) {
@@ -178,13 +272,13 @@ const Meetings = () => {
                 )}
                 <div className="flex flex-wrap gap-4 mt-2 text-sm text-muted-foreground">
                   <span className="flex items-center gap-1">
-                    <Calendar className="h-4 w-4" />
+                    <CalendarIcon className="h-4 w-4" />
                     {format(new Date(meeting.start_time), 'dd/MM/yyyy', { locale: language === 'ar' ? ar : undefined })}
                   </span>
                   <span className="flex items-center gap-1">
                     <Clock className="h-4 w-4" />
-                    {format(new Date(meeting.start_time), 'HH:mm')}
-                    {meeting.end_time && ` - ${format(new Date(meeting.end_time), 'HH:mm')}`}
+                    {formatMeetingTime(meeting.start_time)}
+                    {meeting.end_time && ` - ${formatMeetingTime(meeting.end_time)}`}
                   </span>
                   {meeting.location && (
                     <span className="flex items-center gap-1">
@@ -230,18 +324,7 @@ const Meetings = () => {
         </div>
         <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
           setIsCreateDialogOpen(open);
-          if (!open) {
-            setSelectedMeeting(null);
-            setFormData({
-              title: '',
-              description: '',
-              meeting_type: 'general',
-              start_time: '',
-              end_time: '',
-              location: '',
-              agenda: '',
-            });
-          }
+          if (!open) resetForm();
         }}>
           <DialogTrigger asChild>
             <Button>
@@ -249,7 +332,7 @@ const Meetings = () => {
               {language === 'ar' ? 'جدولة اجتماع' : 'Schedule Meeting'}
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-lg">
+          <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {selectedMeeting 
@@ -259,16 +342,17 @@ const Meetings = () => {
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label>{language === 'ar' ? 'العنوان' : 'Title'}</Label>
+                <Label>{language === 'ar' ? 'العنوان' : 'Title'} *</Label>
                 <Input
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
                   placeholder={language === 'ar' ? 'عنوان الاجتماع' : 'Meeting title'}
                 />
               </div>
+              
               <div>
                 <Label>{language === 'ar' ? 'النوع' : 'Type'}</Label>
-                <Select value={formData.meeting_type} onValueChange={(value) => setFormData({ ...formData, meeting_type: value })}>
+                <Select value={meetingType} onValueChange={setMeetingType}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -281,54 +365,145 @@ const Meetings = () => {
                   </SelectContent>
                 </Select>
               </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label>{language === 'ar' ? 'وقت البدء' : 'Start Time'}</Label>
-                  <Input
-                    type="datetime-local"
-                    value={formData.start_time}
-                    onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
-                  />
+                  <Label>{language === 'ar' ? 'التاريخ' : 'Date'} *</Label>
+                  <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !selectedDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="me-2 h-4 w-4" />
+                        {selectedDate 
+                          ? format(selectedDate, 'dd/MM/yyyy')
+                          : (language === 'ar' ? 'اختر التاريخ' : 'Pick a date')}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={selectedDate}
+                        onSelect={(date) => {
+                          setSelectedDate(date);
+                          setDatePickerOpen(false);
+                        }}
+                        initialFocus
+                        className="pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 <div>
-                  <Label>{language === 'ar' ? 'وقت الانتهاء' : 'End Time'}</Label>
-                  <Input
-                    type="datetime-local"
-                    value={formData.end_time}
-                    onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
-                  />
+                  <Label>{language === 'ar' ? 'الوقت' : 'Time'} *</Label>
+                  <Select value={selectedTime} onValueChange={setSelectedTime}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60">
+                      {timeOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {language === 'ar' ? option.labelAr : option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
+
               <div>
                 <Label>{language === 'ar' ? 'الموقع' : 'Location'}</Label>
                 <Input
-                  value={formData.location}
-                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
                   placeholder={language === 'ar' ? 'الموقع أو رابط الاجتماع' : 'Location or meeting link'}
                 />
               </div>
+
               <div>
                 <Label>{language === 'ar' ? 'الوصف' : 'Description'}</Label>
                 <Textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
                   rows={2}
                 />
               </div>
+
               <div>
                 <Label>{language === 'ar' ? 'جدول الأعمال' : 'Agenda'}</Label>
                 <Textarea
-                  value={formData.agenda}
-                  onChange={(e) => setFormData({ ...formData, agenda: e.target.value })}
-                  rows={3}
+                  value={agenda}
+                  onChange={(e) => setAgenda(e.target.value)}
+                  rows={2}
                   placeholder={language === 'ar' ? 'نقاط النقاش...' : 'Discussion points...'}
                 />
               </div>
-              <Button onClick={handleSubmit} className="w-full" disabled={isCreating || !formData.title || !formData.start_time}>
-                {isCreating ? <Loader2 className="h-4 w-4 animate-spin me-2" /> : null}
+
+              {/* Employee Selection */}
+              {!selectedMeeting && (
+                <div>
+                  <Label className="flex items-center gap-2">
+                    <Users className="h-4 w-4" />
+                    {language === 'ar' ? 'دعوة موظفين' : 'Invite Employees'}
+                  </Label>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    {language === 'ar' 
+                      ? 'سيتم إرسال إشعار للموظفين المختارين'
+                      : 'Selected employees will receive a notification'}
+                  </p>
+                  <div className="border rounded-lg p-2 max-h-40 overflow-y-auto space-y-1">
+                    {teamMembers.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-2">
+                        {language === 'ar' ? 'لا يوجد موظفين' : 'No employees'}
+                      </p>
+                    ) : (
+                      teamMembers.map((member) => (
+                        <label 
+                          key={member.id} 
+                          className="flex items-center gap-2 p-2 rounded hover:bg-muted cursor-pointer"
+                        >
+                          <Checkbox
+                            checked={selectedEmployees.includes(member.id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedEmployees([...selectedEmployees, member.id]);
+                              } else {
+                                setSelectedEmployees(selectedEmployees.filter(id => id !== member.id));
+                              }
+                            }}
+                          />
+                          <span className="text-sm">
+                            {language === 'ar' ? (member.full_name_ar || member.full_name) : member.full_name}
+                          </span>
+                        </label>
+                      ))
+                    )}
+                  </div>
+                  {selectedEmployees.length > 0 && (
+                    <p className="text-xs text-primary mt-1">
+                      {language === 'ar' 
+                        ? `${selectedEmployees.length} موظف محدد`
+                        : `${selectedEmployees.length} employee(s) selected`}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <Button 
+                onClick={handleSubmit} 
+                className="w-full" 
+                disabled={isCreating || !title || !selectedDate}
+              >
+                {isCreating && <Loader2 className="h-4 w-4 animate-spin me-2" />}
                 {selectedMeeting 
                   ? (language === 'ar' ? 'تحديث' : 'Update')
-                  : (language === 'ar' ? 'جدولة' : 'Schedule')}
+                  : selectedEmployees.length > 0
+                    ? (language === 'ar' ? `جدولة وإرسال ${selectedEmployees.length} دعوة` : `Schedule & Send ${selectedEmployees.length} Invite(s)`)
+                    : (language === 'ar' ? 'جدولة' : 'Schedule')}
               </Button>
             </div>
           </DialogContent>
@@ -340,7 +515,7 @@ const Meetings = () => {
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
             <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-              <Calendar className="h-5 w-5 text-blue-600" />
+              <CalendarIcon className="h-5 w-5 text-blue-600" />
             </div>
             <div>
               <p className="text-sm text-muted-foreground">{language === 'ar' ? 'اليوم' : 'Today'}</p>
@@ -468,26 +643,24 @@ const Meetings = () => {
               <div className="p-3 bg-muted rounded-lg">
                 <p className="font-medium">{meetingToInvite.title}</p>
                 <p className="text-sm text-muted-foreground">
-                  {format(new Date(meetingToInvite.start_time), 'dd/MM/yyyy HH:mm')}
+                  {format(new Date(meetingToInvite.start_time), 'dd/MM/yyyy')} - {formatMeetingTime(meetingToInvite.start_time)}
                 </p>
               </div>
             )}
             <div>
               <Label>{language === 'ar' ? 'اختر الموظفين' : 'Select Employees'}</Label>
-              <div className="mt-2 space-y-2 max-h-48 overflow-y-auto">
+              <div className="mt-2 space-y-1 max-h-48 overflow-y-auto border rounded-lg p-2">
                 {teamMembers.map((member) => (
                   <label key={member.id} className="flex items-center gap-2 p-2 rounded hover:bg-muted cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={selectedEmployees.includes(member.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedEmployees([...selectedEmployees, member.id]);
+                    <Checkbox
+                      checked={selectedEmployeesForInvite.includes(member.id)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedEmployeesForInvite([...selectedEmployeesForInvite, member.id]);
                         } else {
-                          setSelectedEmployees(selectedEmployees.filter(id => id !== member.id));
+                          setSelectedEmployeesForInvite(selectedEmployeesForInvite.filter(id => id !== member.id));
                         }
                       }}
-                      className="rounded"
                     />
                     <span>{language === 'ar' ? (member.full_name_ar || member.full_name) : member.full_name}</span>
                   </label>
@@ -497,12 +670,12 @@ const Meetings = () => {
             <Button 
               onClick={sendMeetingReminder} 
               className="w-full"
-              disabled={selectedEmployees.length === 0}
+              disabled={selectedEmployeesForInvite.length === 0}
             >
               <Send className="h-4 w-4 me-2" />
               {language === 'ar' 
-                ? `إرسال دعوة لـ ${selectedEmployees.length} موظف`
-                : `Send to ${selectedEmployees.length} employee(s)`}
+                ? `إرسال دعوة لـ ${selectedEmployeesForInvite.length} موظف`
+                : `Send to ${selectedEmployeesForInvite.length} employee(s)`}
             </Button>
           </div>
         </DialogContent>
