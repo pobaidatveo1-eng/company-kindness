@@ -176,6 +176,46 @@ export const useToggleUserActive = () => {
   });
 };
 
+export const useUpdateUserProfile = () => {
+  const queryClient = useQueryClient();
+  const { t } = useLanguage();
+
+  return useMutation({
+    mutationFn: async (data: { 
+      profileId: string; 
+      fullName?: string; 
+      fullNameAr?: string; 
+      department?: string; 
+      phone?: string;
+    }) => {
+      const { data: result, error } = await supabase.functions.invoke('manage-users', {
+        body: {
+          action: 'updateProfile',
+          ...data,
+        },
+      });
+
+      if (error) throw error;
+      if (result?.error) throw new Error(result.error);
+      return result;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['company-users'] });
+      toast({
+        title: t('team.profileUpdated'),
+        description: t('team.profileUpdatedDesc'),
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: t('common.error'),
+        description: error.message,
+        variant: 'destructive',
+      });
+    },
+  });
+};
+
 export const useDeleteUser = () => {
   const queryClient = useQueryClient();
   const { t } = useLanguage();
