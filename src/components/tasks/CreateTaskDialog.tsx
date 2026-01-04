@@ -25,9 +25,7 @@ import { z } from 'zod';
 
 const taskSchema = z.object({
   title: z.string().min(1, 'العنوان مطلوب'),
-  title_ar: z.string().optional(),
   description: z.string().optional(),
-  description_ar: z.string().optional(),
   priority: z.enum(['low', 'medium', 'high', 'urgent']),
   assigned_to: z.string().optional(),
   department: z.string().optional(),
@@ -82,10 +80,8 @@ const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
   } = useForm<TaskFormData>({
     resolver: zodResolver(taskSchema),
     defaultValues: editTask ? {
-      title: editTask.title,
-      title_ar: editTask.title_ar || '',
-      description: editTask.description || '',
-      description_ar: editTask.description_ar || '',
+      title: editTask.title_ar || editTask.title,
+      description: editTask.description_ar || editTask.description || '',
       priority: editTask.priority,
       assigned_to: editTask.assigned_to || '',
       department: editTask.department || '',
@@ -98,10 +94,8 @@ const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
   React.useEffect(() => {
     if (editTask) {
       reset({
-        title: editTask.title,
-        title_ar: editTask.title_ar || '',
-        description: editTask.description || '',
-        description_ar: editTask.description_ar || '',
+        title: editTask.title_ar || editTask.title,
+        description: editTask.description_ar || editTask.description || '',
         priority: editTask.priority,
         assigned_to: editTask.assigned_to || '',
         department: editTask.department || '',
@@ -142,23 +136,14 @@ const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
         <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
           {/* Title */}
           <div className="space-y-2">
-            <Label>{isArabic ? 'العنوان (إنجليزي)' : 'Title (English)'}</Label>
+            <Label>{isArabic ? 'العنوان' : 'Title'}</Label>
             <Input
               {...register('title')}
-              placeholder={isArabic ? 'أدخل عنوان المهمة' : 'Enter task title'}
+              placeholder={isArabic ? 'أدخل عنوان المهمة (عربي أو إنجليزي)' : 'Enter task title (Arabic or English)'}
             />
             {errors.title && (
               <p className="text-sm text-destructive">{errors.title.message}</p>
             )}
-          </div>
-
-          <div className="space-y-2">
-            <Label>{isArabic ? 'العنوان (عربي)' : 'Title (Arabic)'}</Label>
-            <Input
-              {...register('title_ar')}
-              placeholder={isArabic ? 'أدخل العنوان بالعربية' : 'Enter Arabic title'}
-              dir="rtl"
-            />
           </div>
 
           {/* Description */}
