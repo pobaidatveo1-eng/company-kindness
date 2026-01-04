@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTasks, Task, TaskStatus } from '@/hooks/useTasks';
+import { useMeetings } from '@/hooks/useMeetings';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,14 +17,47 @@ import {
   AlertTriangle,
   Play,
   ArrowRight,
-  Loader2
+  Loader2,
+  Video,
+  MapPin
 } from 'lucide-react';
+import { format, isToday, isTomorrow, differenceInMinutes } from 'date-fns';
+import { ar, enUS } from 'date-fns/locale';
 
 const EmployeeDashboard = () => {
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
   const { profile } = useAuth();
   const { tasks, isLoading, updateTask } = useTasks();
+  const { meetings } = useMeetings();
   const navigate = useNavigate();
+  const isArabic = language === 'ar';
+  const dateLocale = isArabic ? ar : enUS;
+
+  // Filter upcoming meetings (scheduled and not completed/cancelled)
+  const upcomingMeetings = meetings
+    .filter(m => m.status === 'scheduled' && new Date(m.start_time) >= new Date())
+    .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
+    .slice(0, 5);
+
+  const getMeetingTimeLabel = (startTime: string) => {
+    const date = new Date(startTime);
+    const now = new Date();
+    const minutesUntil = differenceInMinutes(date, now);
+
+    if (minutesUntil <= 0) {
+      return { label: 'الآن', urgent: true };
+    } else if (minutesUntil <= 15) {
+      return { label: `خلال ${minutesUntil} دقيقة`, urgent: true };
+    } else if (minutesUntil <= 60) {
+      return { label: `خلال ${minutesUntil} دقيقة`, urgent: false };
+    } else if (isToday(date)) {
+      return { label: `اليوم ${format(date, 'h:mm a', { locale: dateLocale })}`, urgent: false };
+    } else if (isTomorrow(date)) {
+      return { label: `غداً ${format(date, 'h:mm a', { locale: dateLocale })}`, urgent: false };
+    } else {
+      return { label: format(date, 'dd MMM h:mm a', { locale: dateLocale }), urgent: false };
+    }
+  };
 
   // Filter tasks assigned to current user
   const myTasks = tasks.filter(task => task.assigned_to === profile?.id);
@@ -256,6 +290,63 @@ const EmployeeDashboard = () => {
           </CardContent>
         </Card>
       )}
+
+      {/* Upcoming Meetings */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <Video className="h-5 w-5 text-primary" />
+            الاجتماعات القادمة
+          </CardTitle>
+          <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard/meetings')}>
+            عرض الكل
+            <ArrowRight className="h-4 w-4 mr-2" />
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {upcomingMeetings.length === 0 ? (
+            <p className="text-muted-foreground text-center py-8">لا توجد اجتماعات قادمة</p>
+          ) : (
+            <div className="space-y-3">
+              {upcomingMeetings.map((meeting) => {
+                const timeInfo = getMeetingTimeLabel(meeting.start_time);
+                return (
+                  <div
+                    key={meeting.id}
+                    className={`flex items-center justify-between p-3 rounded-lg border-r-4 transition-colors ${
+                      timeInfo.urgent 
+                        ? 'bg-destructive/10 border-destructive animate-pulse' 
+                        : 'bg-primary/5 border-primary hover:bg-primary/10'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className={`p-2 rounded-lg ${timeInfo.urgent ? 'bg-destructive/20' : 'bg-primary/10'}`}>
+                        <Video className={`h-5 w-5 ${timeInfo.urgent ? 'text-destructive' : 'text-primary'}`} />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-medium">{isArabic ? (meeting.title_ar || meeting.title) : meeting.title}</p>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Clock className="h-3 w-3" />
+                          <span>{format(new Date(meeting.start_time), 'h:mm a', { locale: dateLocale })}</span>
+                          {meeting.location && (
+                            <>
+                              <MapPin className="h-3 w-3 mr-2" />
+                              <span>{meeting.location}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <Badge className={timeInfo.urgent ? 'bg-destructive text-destructive-foreground' : 'bg-primary/10 text-primary'}>
+                      {timeInfo.label}
+                    </Badge>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };
