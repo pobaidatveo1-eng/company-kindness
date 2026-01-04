@@ -75,6 +75,10 @@ const TaskList: React.FC = () => {
     updateTask.mutate({ id, status });
   };
 
+  const handleReassign = (taskId: string, newAssigneeId: string) => {
+    updateTask.mutate({ id: taskId, assigned_to: newAssigneeId });
+  };
+
   const handleEdit = (task: Task) => {
     setEditTask(task);
     setCreateDialogOpen(true);
@@ -196,6 +200,7 @@ const TaskList: React.FC = () => {
                     onEdit={handleEdit}
                     onDelete={handleDelete}
                     onView={setViewTask}
+                    onReassign={handleReassign}
                     canManage={canManage || task.assigned_to === profile?.id}
                   />
                 ))}

@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Task, TaskStatus, TaskPriority } from '@/hooks/useTasks';
+import { Task, TaskStatus, TaskPriority, useTeamMembers } from '@/hooks/useTasks';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -8,8 +8,23 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { 
   CheckCircle2, 
   Clock, 
@@ -20,7 +35,9 @@ import {
   Trash2,
   Edit,
   PlayCircle,
-  XCircle
+  XCircle,
+  UserPlus,
+  MessageSquare
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ar, enUS } from 'date-fns/locale';
@@ -31,6 +48,7 @@ interface TaskCardProps {
   onEdit: (task: Task) => void;
   onDelete: (id: string) => void;
   onView: (task: Task) => void;
+  onReassign?: (taskId: string, newAssigneeId: string) => void;
   canManage: boolean;
 }
 
@@ -40,17 +58,29 @@ const TaskCard: React.FC<TaskCardProps> = ({
   onEdit, 
   onDelete,
   onView,
+  onReassign,
   canManage 
 }) => {
   const { language } = useLanguage();
   const isArabic = language === 'ar';
   const dateLocale = isArabic ? ar : enUS;
+  const { teamMembers } = useTeamMembers();
+  const [reassignDialogOpen, setReassignDialogOpen] = useState(false);
+  const [selectedAssignee, setSelectedAssignee] = useState<string>('');
 
   const title = isArabic ? (task.title_ar || task.title) : task.title;
   const description = isArabic ? (task.description_ar || task.description) : task.description;
   const assigneeName = task.assignee 
     ? (isArabic ? (task.assignee.full_name_ar || task.assignee.full_name) : task.assignee.full_name)
     : null;
+
+  const handleReassign = () => {
+    if (onReassign && selectedAssignee) {
+      onReassign(task.id, selectedAssignee);
+      setReassignDialogOpen(false);
+      setSelectedAssignee('');
+    }
+  };
 
   const getStatusConfig = (status: TaskStatus) => {
     switch (status) {
@@ -180,10 +210,16 @@ const TaskCard: React.FC<TaskCardProps> = ({
                 </DropdownMenuItem>
               )}
               {task.status === 'in_progress' && (
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onStatusChange(task.id, 'completed'); }}>
-                  <CheckCircle2 className="h-4 w-4 me-2" />
-                  {isArabic ? 'إكمال المهمة' : 'Complete Task'}
-                </DropdownMenuItem>
+                <>
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onStatusChange(task.id, 'completed'); }}>
+                    <CheckCircle2 className="h-4 w-4 me-2" />
+                    {isArabic ? 'إكمال المهمة' : 'Complete Task'}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onView(task); }}>
+                    <MessageSquare className="h-4 w-4 me-2" />
+                    {isArabic ? 'إضافة تحديث' : 'Add Update'}
+                  </DropdownMenuItem>
+                </>
               )}
               {task.status !== 'pending' && task.status !== 'cancelled' && (
                 <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onStatusChange(task.id, 'pending'); }}>
@@ -191,8 +227,28 @@ const TaskCard: React.FC<TaskCardProps> = ({
                   {isArabic ? 'إعادة للمعلق' : 'Move to Pending'}
                 </DropdownMenuItem>
               )}
+              
+              {/* نقل المهمة لموظف آخر */}
+              {onReassign && (
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setReassignDialogOpen(true); }}>
+                  <UserPlus className="h-4 w-4 me-2" />
+                  {isArabic ? 'نقل لموظف آخر' : 'Reassign'}
+                </DropdownMenuItem>
+              )}
+
+              {task.status !== 'cancelled' && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onStatusChange(task.id, 'cancelled'); }}>
+                    <XCircle className="h-4 w-4 me-2" />
+                    {isArabic ? 'إلغاء المهمة' : 'Cancel Task'}
+                  </DropdownMenuItem>
+                </>
+              )}
+
               {canManage && (
                 <>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(task); }}>
                     <Edit className="h-4 w-4 me-2" />
                     {isArabic ? 'تعديل' : 'Edit'}
@@ -210,6 +266,37 @@ const TaskCard: React.FC<TaskCardProps> = ({
           </DropdownMenu>
         </div>
       </CardContent>
+
+      {/* Reassign Dialog */}
+      <Dialog open={reassignDialogOpen} onOpenChange={setReassignDialogOpen}>
+        <DialogContent className="max-w-sm" onClick={(e) => e.stopPropagation()}>
+          <DialogHeader>
+            <DialogTitle>{isArabic ? 'نقل المهمة لموظف آخر' : 'Reassign Task'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>{isArabic ? 'اختر الموظف الجديد' : 'Select New Assignee'}</Label>
+              <Select value={selectedAssignee} onValueChange={setSelectedAssignee}>
+                <SelectTrigger className="mt-2">
+                  <SelectValue placeholder={isArabic ? 'اختر موظف' : 'Select employee'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {teamMembers
+                    .filter(m => m.id !== task.assigned_to)
+                    .map((member) => (
+                      <SelectItem key={member.id} value={member.id}>
+                        {isArabic ? (member.full_name_ar || member.full_name) : member.full_name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button onClick={handleReassign} className="w-full" disabled={!selectedAssignee}>
+              {isArabic ? 'نقل المهمة' : 'Reassign Task'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };
