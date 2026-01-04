@@ -587,6 +587,63 @@ export type Database = {
           },
         ]
       }
+      manual_items: {
+        Row: {
+          assigned_to: string | null
+          client_id: string | null
+          company_id: string
+          contract_id: string | null
+          created_at: string
+          created_by: string | null
+          date: string | null
+          description: string | null
+          description_ar: string | null
+          id: string
+          priority: string
+          status: string
+          title: string
+          title_ar: string | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          client_id?: string | null
+          company_id: string
+          contract_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          date?: string | null
+          description?: string | null
+          description_ar?: string | null
+          id?: string
+          priority?: string
+          status?: string
+          title: string
+          title_ar?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          client_id?: string | null
+          company_id?: string
+          contract_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          date?: string | null
+          description?: string | null
+          description_ar?: string | null
+          id?: string
+          priority?: string
+          status?: string
+          title?: string
+          title_ar?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       meeting_participants: {
         Row: {
           attended: boolean | null
