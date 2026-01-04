@@ -2,12 +2,45 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { sanitizeError } from '@/lib/errorHandler';
 
 export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled';
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 
+// Helper to create task notification
+const createTaskNotification = async (
+  userId: string,
+  taskTitle: string,
+  type: 'assigned' | 'updated' | 'completed',
+  priority: TaskPriority = 'medium'
+) => {
+  const titles = {
+    assigned: { en: 'New Task Assigned', ar: 'مهمة جديدة مسندة إليك' },
+    updated: { en: 'Task Updated', ar: 'تم تحديث المهمة' },
+    completed: { en: 'Task Completed', ar: 'تم إنجاز المهمة' },
+  };
+
+  const messages = {
+    assigned: { en: `You have been assigned: ${taskTitle}`, ar: `تم إسناد مهمة جديدة إليك: ${taskTitle}` },
+    updated: { en: `Task updated: ${taskTitle}`, ar: `تم تحديث المهمة: ${taskTitle}` },
+    completed: { en: `Task completed: ${taskTitle}`, ar: `تم إنجاز المهمة: ${taskTitle}` },
+  };
+
+  const notificationPriority = priority === 'urgent' ? 'urgent' : priority === 'high' ? 'high' : 'normal';
+
+  await supabase.from('notifications').insert({
+    user_id: userId,
+    type: `task_${type}`,
+    title: titles[type].en,
+    title_ar: titles[type].ar,
+    message: messages[type].en,
+    message_ar: messages[type].ar,
+    priority: notificationPriority,
+    sound_enabled: true,
+    reference_type: 'task',
+  });
+};
 export interface Task {
   id: string;
   company_id: string;
@@ -130,6 +163,17 @@ export const useTasks = () => {
         .single();
 
       if (error) throw error;
+
+      // Send notification to assigned user
+      if (data.assigned_to && data.assigned_to !== profile.id) {
+        await createTaskNotification(
+          data.assigned_to,
+          data.title_ar || data.title,
+          'assigned',
+          data.priority
+        );
+      }
+
       return task;
     },
     onSuccess: () => {
@@ -143,6 +187,13 @@ export const useTasks = () => {
 
   const updateTask = useMutation({
     mutationFn: async ({ id, ...data }: UpdateTaskData) => {
+      // Get current task to check for changes
+      const { data: currentTask } = await supabase
+        .from('tasks')
+        .select('*, assignee:profiles!tasks_assigned_to_fkey(id, full_name)')
+        .eq('id', id)
+        .single();
+
       const updateData: {
         title?: string;
         title_ar?: string;
@@ -181,6 +232,29 @@ export const useTasks = () => {
         .single();
 
       if (error) throw error;
+
+      // Send notifications based on changes
+      if (currentTask && profile) {
+        const taskTitle = currentTask.title_ar || currentTask.title;
+
+        // Notify if reassigned to new user
+        if (data.assigned_to && data.assigned_to !== currentTask.assigned_to && data.assigned_to !== profile.id) {
+          await createTaskNotification(data.assigned_to, taskTitle, 'assigned', currentTask.priority);
+        }
+
+        // Notify task creator when completed
+        if (data.status === 'completed' && currentTask.created_by !== profile.id) {
+          await createTaskNotification(currentTask.created_by, taskTitle, 'completed', currentTask.priority);
+        }
+
+        // Notify assignee of updates (if not the one making the update)
+        if (currentTask.assigned_to && currentTask.assigned_to !== profile.id && data.status !== 'completed') {
+          if (data.priority || data.due_date !== undefined) {
+            await createTaskNotification(currentTask.assigned_to, taskTitle, 'updated', data.priority || currentTask.priority);
+          }
+        }
+      }
+
       return task;
     },
     onSuccess: () => {
