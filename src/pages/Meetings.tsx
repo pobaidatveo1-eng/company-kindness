@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useMeetings, Meeting, MeetingStatus, CreateMeetingData } from '@/hooks/useMeetings';
 import { useTeamMembers } from '@/hooks/useTasks';
+import { useNotifications } from '@/hooks/useNotifications';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,9 +12,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Calendar, Clock, MapPin, Users, Video, FileText, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { Plus, Calendar, Clock, MapPin, Users, Video, FileText, CheckCircle, XCircle, Loader2, Bell, Send } from 'lucide-react';
 import { format, isToday, isTomorrow, isThisWeek, isPast } from 'date-fns';
 import { ar } from 'date-fns/locale';
+import { toast } from '@/hooks/use-toast';
 
 const statusColors: Record<MeetingStatus, string> = {
   scheduled: 'bg-blue-500',
@@ -39,9 +41,14 @@ const meetingTypeLabels: Record<string, { ar: string; en: string }> = {
 const Meetings = () => {
   const { language } = useLanguage();
   const { meetings, isLoading, createMeeting, updateMeeting, isCreating } = useMeetings();
+  const { teamMembers } = useTeamMembers();
+  const { createNotification } = useNotifications();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
   const [activeTab, setActiveTab] = useState('upcoming');
+  const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
+  const [meetingToInvite, setMeetingToInvite] = useState<Meeting | null>(null);
+  const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
 
   const [formData, setFormData] = useState<CreateMeetingData>({
     title: '',
@@ -102,6 +109,41 @@ const Meetings = () => {
     updateMeeting({ id: meeting.id, status: 'completed' });
   };
 
+  const openInviteDialog = (meeting: Meeting) => {
+    setMeetingToInvite(meeting);
+    setSelectedEmployees([]);
+    setInviteDialogOpen(true);
+  };
+
+  const sendMeetingReminder = () => {
+    if (!meetingToInvite || selectedEmployees.length === 0) return;
+
+    selectedEmployees.forEach(employeeId => {
+      createNotification({
+        user_id: employeeId,
+        type: 'meeting_reminder',
+        title: 'Meeting Reminder',
+        title_ar: 'تذكير باجتماع',
+        message: `You have been invited to: ${meetingToInvite.title} at ${format(new Date(meetingToInvite.start_time), 'dd/MM/yyyy HH:mm')}`,
+        message_ar: `تم دعوتك لحضور: ${meetingToInvite.title} في ${format(new Date(meetingToInvite.start_time), 'dd/MM/yyyy HH:mm')}`,
+        reference_id: meetingToInvite.id,
+        reference_type: 'meeting',
+        priority: 'high',
+      });
+    });
+
+    toast({
+      title: language === 'ar' ? 'تم إرسال الدعوات' : 'Invitations Sent',
+      description: language === 'ar' 
+        ? `تم إرسال ${selectedEmployees.length} دعوة`
+        : `${selectedEmployees.length} invitation(s) sent`,
+    });
+
+    setInviteDialogOpen(false);
+    setMeetingToInvite(null);
+    setSelectedEmployees([]);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -156,10 +198,16 @@ const Meetings = () => {
           </div>
           <div className="flex gap-2">
             {meeting.status === 'scheduled' && (
-              <Button size="sm" variant="outline" onClick={() => markAsCompleted(meeting)}>
-                <CheckCircle className="h-4 w-4 me-1" />
-                {language === 'ar' ? 'إكمال' : 'Complete'}
-              </Button>
+              <>
+                <Button size="sm" variant="outline" onClick={() => openInviteDialog(meeting)}>
+                  <Bell className="h-4 w-4 me-1" />
+                  {language === 'ar' ? 'دعوة' : 'Invite'}
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => markAsCompleted(meeting)}>
+                  <CheckCircle className="h-4 w-4 me-1" />
+                  {language === 'ar' ? 'إكمال' : 'Complete'}
+                </Button>
+              </>
             )}
             <Button size="sm" variant="ghost" onClick={() => openEditDialog(meeting)}>
               {language === 'ar' ? 'تعديل' : 'Edit'}
@@ -406,6 +454,59 @@ const Meetings = () => {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Invite Employees Dialog */}
+      <Dialog open={inviteDialogOpen} onOpenChange={setInviteDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {language === 'ar' ? 'دعوة الموظفين للاجتماع' : 'Invite Employees to Meeting'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {meetingToInvite && (
+              <div className="p-3 bg-muted rounded-lg">
+                <p className="font-medium">{meetingToInvite.title}</p>
+                <p className="text-sm text-muted-foreground">
+                  {format(new Date(meetingToInvite.start_time), 'dd/MM/yyyy HH:mm')}
+                </p>
+              </div>
+            )}
+            <div>
+              <Label>{language === 'ar' ? 'اختر الموظفين' : 'Select Employees'}</Label>
+              <div className="mt-2 space-y-2 max-h-48 overflow-y-auto">
+                {teamMembers.map((member) => (
+                  <label key={member.id} className="flex items-center gap-2 p-2 rounded hover:bg-muted cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedEmployees.includes(member.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedEmployees([...selectedEmployees, member.id]);
+                        } else {
+                          setSelectedEmployees(selectedEmployees.filter(id => id !== member.id));
+                        }
+                      }}
+                      className="rounded"
+                    />
+                    <span>{language === 'ar' ? (member.full_name_ar || member.full_name) : member.full_name}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            <Button 
+              onClick={sendMeetingReminder} 
+              className="w-full"
+              disabled={selectedEmployees.length === 0}
+            >
+              <Send className="h-4 w-4 me-2" />
+              {language === 'ar' 
+                ? `إرسال دعوة لـ ${selectedEmployees.length} موظف`
+                : `Send to ${selectedEmployees.length} employee(s)`}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
