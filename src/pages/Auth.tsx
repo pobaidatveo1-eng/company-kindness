@@ -316,27 +316,14 @@ const Auth: React.FC = () => {
             © 2026 Non Stop. {t('app.tagline')}
           </p>
           
-          {/* Super Admin Quick Access */}
+          {/* Admin Quick Access - Development hint only */}
           <div className="pt-2 border-t border-border/50">
-            <button
-              type="button"
-              onClick={() => {
-                setFormData(prev => ({
-                  ...prev,
-                  email: 'pobaidat@gmail.com',
-                  password: '',
-                }));
-                setIsLogin(true);
-                toast({
-                  title: language === 'ar' ? 'تم تحديد حساب المدير' : 'Admin account selected',
-                  description: language === 'ar' ? 'أدخل كلمة المرور للمتابعة' : 'Enter password to continue',
-                });
-              }}
-              className="w-full flex items-center justify-center gap-2 p-2 rounded-lg bg-muted/50 hover:bg-muted text-xs text-muted-foreground hover:text-foreground transition-colors"
-            >
+            <p className="text-center text-xs text-muted-foreground flex items-center justify-center gap-1">
               <Shield className="h-3 w-3" />
-              {language === 'ar' ? 'دخول المدير العام' : 'Super Admin Access'}
-            </button>
+              {language === 'ar' 
+                ? 'سجل الدخول بحساب المدير العام للوصول الكامل' 
+                : 'Sign in with Super Admin account for full access'}
+            </p>
           </div>
         </div>
       </footer>

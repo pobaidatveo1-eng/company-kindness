@@ -1,49 +1,71 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-interface CreateUserRequest {
-  action: 'create'
-  email: string
-  password: string
-  fullName: string
-  fullNameAr?: string
-  role: 'admin' | 'employee'
-  department?: string
-  phone?: string
-}
+// Validation schemas
+const createUserSchema = z.object({
+  action: z.literal('create'),
+  email: z.string().email('Invalid email format').max(255, 'Email too long'),
+  password: z.string()
+    .min(8, 'Password must be at least 8 characters')
+    .max(72, 'Password too long'),
+  fullName: z.string()
+    .min(2, 'Name must be at least 2 characters')
+    .max(100, 'Name too long')
+    .transform(val => val.trim()),
+  fullNameAr: z.string().max(100, 'Arabic name too long').optional().transform(val => val?.trim()),
+  role: z.enum(['admin', 'employee']),
+  department: z.string().max(50, 'Department name too long').optional(),
+  phone: z.string()
+    .regex(/^[\+]?[0-9\s\-\(\)]*$/, 'Invalid phone format')
+    .max(20, 'Phone number too long')
+    .optional()
+    .transform(val => val?.trim())
+})
 
-interface UpdateRoleRequest {
-  action: 'updateRole'
-  userId: string
-  newRole: 'admin' | 'employee'
-}
+const updateRoleSchema = z.object({
+  action: z.literal('updateRole'),
+  userId: z.string().uuid('Invalid user ID'),
+  newRole: z.enum(['admin', 'employee'])
+})
 
-interface ToggleActiveRequest {
-  action: 'toggleActive'
-  profileId: string
-  isActive: boolean
-}
+const toggleActiveSchema = z.object({
+  action: z.literal('toggleActive'),
+  profileId: z.string().uuid('Invalid profile ID'),
+  isActive: z.boolean()
+})
 
-interface DeleteUserRequest {
-  action: 'delete'
-  userId: string
-  profileId: string
-}
+const deleteUserSchema = z.object({
+  action: z.literal('delete'),
+  userId: z.string().uuid('Invalid user ID'),
+  profileId: z.string().uuid('Invalid profile ID')
+})
 
-interface UpdateProfileRequest {
-  action: 'updateProfile'
-  profileId: string
-  fullName?: string
-  fullNameAr?: string
-  department?: string
-  phone?: string
-}
+const updateProfileSchema = z.object({
+  action: z.literal('updateProfile'),
+  profileId: z.string().uuid('Invalid profile ID'),
+  fullName: z.string().min(2).max(100).optional().transform(val => val?.trim()),
+  fullNameAr: z.string().max(100).optional().transform(val => val?.trim()),
+  department: z.string().max(50).optional(),
+  phone: z.string()
+    .regex(/^[\+]?[0-9\s\-\(\)]*$/, 'Invalid phone format')
+    .max(20)
+    .optional()
+    .transform(val => val?.trim())
+})
 
-type RequestBody = CreateUserRequest | UpdateRoleRequest | ToggleActiveRequest | DeleteUserRequest | UpdateProfileRequest
+// Helper to sanitize string inputs (remove zero-width chars, normalize unicode)
+function sanitizeString(input: string | undefined): string | undefined {
+  if (!input) return input
+  return input
+    .replace(/[\u200B-\u200D\uFEFF]/g, '') // Remove zero-width chars
+    .normalize('NFC') // Normalize unicode
+    .trim()
+}
 
 Deno.serve(async (req) => {
   // Handle CORS preflight
@@ -110,11 +132,31 @@ Deno.serve(async (req) => {
     const companyId = requestingProfile.company_id
 
     // Parse request body
-    const body: RequestBody = await req.json()
-    console.log('Request action:', body.action, 'by role:', userRole)
+    const rawBody = await req.json()
+    console.log('Request action:', rawBody.action, 'by role:', userRole)
 
-    switch (body.action) {
+    // Determine which schema to use based on action
+    let validatedBody: any
+
+    switch (rawBody.action) {
       case 'create': {
+        const validation = createUserSchema.safeParse(rawBody)
+        if (!validation.success) {
+          console.error('Validation error:', validation.error.format())
+          return new Response(JSON.stringify({ 
+            error: 'Validation error',
+            details: validation.error.errors.map(e => e.message).join(', ')
+          }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          })
+        }
+        validatedBody = validation.data
+
+        // Sanitize string inputs
+        validatedBody.fullName = sanitizeString(validatedBody.fullName)
+        validatedBody.fullNameAr = sanitizeString(validatedBody.fullNameAr)
+
         // Only super_admin and admin can create users
         if (userRole !== 'super_admin' && userRole !== 'admin') {
           return new Response(JSON.stringify({ error: 'Permission denied' }), {
@@ -124,7 +166,7 @@ Deno.serve(async (req) => {
         }
 
         // Admin can only create employees
-        if (userRole === 'admin' && body.role !== 'employee') {
+        if (userRole === 'admin' && validatedBody.role !== 'employee') {
           return new Response(JSON.stringify({ error: 'Admins can only create employees' }), {
             status: 403,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -133,12 +175,12 @@ Deno.serve(async (req) => {
 
         // Create auth user
         const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
-          email: body.email,
-          password: body.password,
+          email: validatedBody.email,
+          password: validatedBody.password,
           email_confirm: true,
           user_metadata: {
-            full_name: body.fullName,
-            full_name_ar: body.fullNameAr
+            full_name: validatedBody.fullName,
+            full_name_ar: validatedBody.fullNameAr
           }
         })
 
@@ -156,10 +198,10 @@ Deno.serve(async (req) => {
           .upsert({
             user_id: newUser.user.id,
             company_id: companyId,
-            full_name: body.fullName,
-            full_name_ar: body.fullNameAr,
-            department: body.department,
-            phone: body.phone,
+            full_name: validatedBody.fullName,
+            full_name_ar: validatedBody.fullNameAr,
+            department: validatedBody.department,
+            phone: validatedBody.phone,
             is_active: true
           }, { 
             onConflict: 'user_id',
@@ -182,7 +224,7 @@ Deno.serve(async (req) => {
           .insert({
             user_id: newUser.user.id,
             company_id: companyId,
-            role: body.role
+            role: validatedBody.role
           })
 
         if (roleError) {
@@ -201,17 +243,21 @@ Deno.serve(async (req) => {
       }
 
       case 'updateRole': {
-        // Only super_admin can change roles
-        if (userRole !== 'super_admin') {
-          return new Response(JSON.stringify({ error: 'Only super admin can change roles' }), {
-            status: 403,
+        const validation = updateRoleSchema.safeParse(rawBody)
+        if (!validation.success) {
+          return new Response(JSON.stringify({ 
+            error: 'Validation error',
+            details: validation.error.errors.map(e => e.message).join(', ')
+          }), {
+            status: 400,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           })
         }
+        validatedBody = validation.data
 
-        // Cannot change to super_admin
-        if (body.newRole === 'super_admin' as any) {
-          return new Response(JSON.stringify({ error: 'Cannot assign super_admin role' }), {
+        // Only super_admin can change roles
+        if (userRole !== 'super_admin') {
+          return new Response(JSON.stringify({ error: 'Only super admin can change roles' }), {
             status: 403,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           })
@@ -221,7 +267,7 @@ Deno.serve(async (req) => {
         const { data: targetRole } = await supabaseAdmin
           .from('user_roles')
           .select('role')
-          .eq('user_id', body.userId)
+          .eq('user_id', validatedBody.userId)
           .eq('company_id', companyId)
           .single()
 
@@ -234,8 +280,8 @@ Deno.serve(async (req) => {
 
         const { error: updateError } = await supabaseAdmin
           .from('user_roles')
-          .update({ role: body.newRole })
-          .eq('user_id', body.userId)
+          .update({ role: validatedBody.newRole })
+          .eq('user_id', validatedBody.userId)
           .eq('company_id', companyId)
 
         if (updateError) {
@@ -246,7 +292,7 @@ Deno.serve(async (req) => {
           })
         }
 
-        console.log('Role updated successfully for user:', body.userId)
+        console.log('Role updated successfully for user:', validatedBody.userId)
         return new Response(JSON.stringify({ success: true }), {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -254,6 +300,18 @@ Deno.serve(async (req) => {
       }
 
       case 'toggleActive': {
+        const validation = toggleActiveSchema.safeParse(rawBody)
+        if (!validation.success) {
+          return new Response(JSON.stringify({ 
+            error: 'Validation error',
+            details: validation.error.errors.map(e => e.message).join(', ')
+          }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          })
+        }
+        validatedBody = validation.data
+
         // Only super_admin and admin can toggle active
         if (userRole !== 'super_admin' && userRole !== 'admin') {
           return new Response(JSON.stringify({ error: 'Permission denied' }), {
@@ -264,8 +322,8 @@ Deno.serve(async (req) => {
 
         const { error: updateError } = await supabaseAdmin
           .from('profiles')
-          .update({ is_active: body.isActive })
-          .eq('id', body.profileId)
+          .update({ is_active: validatedBody.isActive })
+          .eq('id', validatedBody.profileId)
           .eq('company_id', companyId)
 
         if (updateError) {
@@ -276,7 +334,7 @@ Deno.serve(async (req) => {
           })
         }
 
-        console.log('User active status toggled:', body.profileId, body.isActive)
+        console.log('User active status toggled:', validatedBody.profileId, validatedBody.isActive)
         return new Response(JSON.stringify({ success: true }), {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -284,6 +342,18 @@ Deno.serve(async (req) => {
       }
 
       case 'delete': {
+        const validation = deleteUserSchema.safeParse(rawBody)
+        if (!validation.success) {
+          return new Response(JSON.stringify({ 
+            error: 'Validation error',
+            details: validation.error.errors.map(e => e.message).join(', ')
+          }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          })
+        }
+        validatedBody = validation.data
+
         // Only super_admin can delete users
         if (userRole !== 'super_admin') {
           return new Response(JSON.stringify({ error: 'Only super admin can delete users' }), {
@@ -293,7 +363,7 @@ Deno.serve(async (req) => {
         }
 
         // Cannot delete yourself
-        if (body.userId === requestingUser.id) {
+        if (validatedBody.userId === requestingUser.id) {
           return new Response(JSON.stringify({ error: 'Cannot delete yourself' }), {
             status: 403,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -304,7 +374,7 @@ Deno.serve(async (req) => {
         const { data: targetRole } = await supabaseAdmin
           .from('user_roles')
           .select('role')
-          .eq('user_id', body.userId)
+          .eq('user_id', validatedBody.userId)
           .eq('company_id', companyId)
           .single()
 
@@ -316,7 +386,7 @@ Deno.serve(async (req) => {
         }
 
         // Delete auth user (cascades to profile and roles)
-        const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(body.userId)
+        const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(validatedBody.userId)
 
         if (deleteError) {
           console.error('Delete user error:', deleteError)
@@ -326,7 +396,7 @@ Deno.serve(async (req) => {
           })
         }
 
-        console.log('User deleted successfully:', body.userId)
+        console.log('User deleted successfully:', validatedBody.userId)
         return new Response(JSON.stringify({ success: true }), {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -334,6 +404,22 @@ Deno.serve(async (req) => {
       }
 
       case 'updateProfile': {
+        const validation = updateProfileSchema.safeParse(rawBody)
+        if (!validation.success) {
+          return new Response(JSON.stringify({ 
+            error: 'Validation error',
+            details: validation.error.errors.map(e => e.message).join(', ')
+          }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          })
+        }
+        validatedBody = validation.data
+
+        // Sanitize string inputs
+        validatedBody.fullName = sanitizeString(validatedBody.fullName)
+        validatedBody.fullNameAr = sanitizeString(validatedBody.fullNameAr)
+
         // Only super_admin and admin can update profiles
         if (userRole !== 'super_admin' && userRole !== 'admin') {
           return new Response(JSON.stringify({ error: 'Permission denied' }), {
@@ -343,15 +429,15 @@ Deno.serve(async (req) => {
         }
 
         const updateData: Record<string, any> = {}
-        if (body.fullName !== undefined) updateData.full_name = body.fullName
-        if (body.fullNameAr !== undefined) updateData.full_name_ar = body.fullNameAr
-        if (body.department !== undefined) updateData.department = body.department
-        if (body.phone !== undefined) updateData.phone = body.phone
+        if (validatedBody.fullName !== undefined) updateData.full_name = validatedBody.fullName
+        if (validatedBody.fullNameAr !== undefined) updateData.full_name_ar = validatedBody.fullNameAr
+        if (validatedBody.department !== undefined) updateData.department = validatedBody.department
+        if (validatedBody.phone !== undefined) updateData.phone = validatedBody.phone
 
         const { error: updateError } = await supabaseAdmin
           .from('profiles')
           .update(updateData)
-          .eq('id', body.profileId)
+          .eq('id', validatedBody.profileId)
           .eq('company_id', companyId)
 
         if (updateError) {
@@ -362,7 +448,7 @@ Deno.serve(async (req) => {
           })
         }
 
-        console.log('Profile updated successfully:', body.profileId)
+        console.log('Profile updated successfully:', validatedBody.profileId)
         return new Response(JSON.stringify({ success: true }), {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -377,8 +463,8 @@ Deno.serve(async (req) => {
     }
   } catch (error: unknown) {
     console.error('Edge function error:', error)
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    return new Response(JSON.stringify({ error: errorMessage }), {
+    // Return generic error message to avoid leaking internal details
+    return new Response(JSON.stringify({ error: 'An unexpected error occurred' }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
