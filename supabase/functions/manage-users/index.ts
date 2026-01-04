@@ -141,10 +141,10 @@ Deno.serve(async (req) => {
           })
         }
 
-        // Create profile
+        // Create or update profile (upsert to handle trigger-created profiles)
         const { error: profileError } = await supabaseAdmin
           .from('profiles')
-          .insert({
+          .upsert({
             user_id: newUser.user.id,
             company_id: companyId,
             full_name: body.fullName,
@@ -152,6 +152,9 @@ Deno.serve(async (req) => {
             department: body.department,
             phone: body.phone,
             is_active: true
+          }, { 
+            onConflict: 'user_id',
+            ignoreDuplicates: false 
           })
 
         if (profileError) {
