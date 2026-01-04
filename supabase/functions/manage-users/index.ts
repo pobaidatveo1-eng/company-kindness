@@ -34,7 +34,16 @@ interface DeleteUserRequest {
   profileId: string
 }
 
-type RequestBody = CreateUserRequest | UpdateRoleRequest | ToggleActiveRequest | DeleteUserRequest
+interface UpdateProfileRequest {
+  action: 'updateProfile'
+  profileId: string
+  fullName?: string
+  fullNameAr?: string
+  department?: string
+  phone?: string
+}
+
+type RequestBody = CreateUserRequest | UpdateRoleRequest | ToggleActiveRequest | DeleteUserRequest | UpdateProfileRequest
 
 Deno.serve(async (req) => {
   // Handle CORS preflight
@@ -318,6 +327,42 @@ Deno.serve(async (req) => {
         }
 
         console.log('User deleted successfully:', body.userId)
+        return new Response(JSON.stringify({ success: true }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+
+      case 'updateProfile': {
+        // Only super_admin and admin can update profiles
+        if (userRole !== 'super_admin' && userRole !== 'admin') {
+          return new Response(JSON.stringify({ error: 'Permission denied' }), {
+            status: 403,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          })
+        }
+
+        const updateData: Record<string, any> = {}
+        if (body.fullName !== undefined) updateData.full_name = body.fullName
+        if (body.fullNameAr !== undefined) updateData.full_name_ar = body.fullNameAr
+        if (body.department !== undefined) updateData.department = body.department
+        if (body.phone !== undefined) updateData.phone = body.phone
+
+        const { error: updateError } = await supabaseAdmin
+          .from('profiles')
+          .update(updateData)
+          .eq('id', body.profileId)
+          .eq('company_id', companyId)
+
+        if (updateError) {
+          console.error('Update profile error:', updateError)
+          return new Response(JSON.stringify({ error: updateError.message }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          })
+        }
+
+        console.log('Profile updated successfully:', body.profileId)
         return new Response(JSON.stringify({ success: true }), {
           status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }

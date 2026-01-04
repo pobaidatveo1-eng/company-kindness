@@ -1,20 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { useCompanyUsers, useCreateUser, useUpdateUserRole, useToggleUserActive, useDeleteUser } from '@/hooks/useUsers';
+import { useCompanyUsers, useCreateUser, useUpdateUserRole, useToggleUserActive, useDeleteUser, useUpdateUserProfile } from '@/hooks/useUsers';
 import { useCompanyDepartments, useJobTitles } from '@/hooks/useCompanySettings';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Users, UserPlus, Shield, ShieldCheck, User, Loader2, MoreHorizontal, UserCheck, UserX, Trash2, Settings, Search, Eye, EyeOff, Key } from 'lucide-react';
+import { Users, UserPlus, Shield, ShieldCheck, User, Loader2, MoreHorizontal, UserCheck, UserX, Trash2, Settings, Search, Eye, EyeOff, Key, Pencil } from 'lucide-react';
 import { PermissionsDialog } from './PermissionsDialog';
 
 const AVAILABLE_PERMISSIONS = [
@@ -48,9 +48,11 @@ export const EmployeesTab = () => {
   const updateRole = useUpdateUserRole();
   const toggleActive = useToggleUserActive();
   const deleteUser = useDeleteUser();
+  const updateProfile = useUpdateUserProfile();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [permissionsDialogOpen, setPermissionsDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
@@ -65,6 +67,24 @@ export const EmployeesTab = () => {
     department: '',
     phone: '',
   });
+
+  const [editFormData, setEditFormData] = useState({
+    fullName: '',
+    fullNameAr: '',
+    department: '',
+    phone: '',
+  });
+
+  useEffect(() => {
+    if (selectedUser && editDialogOpen) {
+      setEditFormData({
+        fullName: selectedUser.full_name || '',
+        fullNameAr: selectedUser.full_name_ar || '',
+        department: selectedUser.department || '',
+        phone: selectedUser.phone || '',
+      });
+    }
+  }, [selectedUser, editDialogOpen]);
 
   const filteredUsers = users?.filter((user) => {
     const searchLower = searchQuery.toLowerCase();
@@ -155,6 +175,22 @@ export const EmployeesTab = () => {
       userId,
       newRole: newRole as 'admin' | 'employee',
     });
+  };
+
+  const handleEditUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUser) return;
+
+    await updateProfile.mutateAsync({
+      profileId: selectedUser.id,
+      fullName: editFormData.fullName,
+      fullNameAr: editFormData.fullNameAr || undefined,
+      department: editFormData.department || undefined,
+      phone: editFormData.phone || undefined,
+    });
+
+    setEditDialogOpen(false);
+    setSelectedUser(null);
   };
 
   const isSuperAdmin = userRole?.role === 'super_admin';
@@ -440,6 +476,15 @@ export const EmployeesTab = () => {
                             <DropdownMenuItem
                               onClick={() => {
                                 setSelectedUser(user);
+                                setEditDialogOpen(true);
+                              }}
+                            >
+                              <Pencil className="h-4 w-4 me-2" />
+                              {isArabic ? 'تعديل البيانات' : 'Edit Details'}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setSelectedUser(user);
                                 setPermissionsDialogOpen(true);
                               }}
                             >
@@ -505,6 +550,76 @@ export const EmployeesTab = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>{isArabic ? 'تعديل بيانات الموظف' : 'Edit Employee Details'}</DialogTitle>
+            <DialogDescription>
+              {isArabic ? 'تعديل معلومات الموظف الأساسية' : 'Edit basic employee information'}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleEditUser} className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>{isArabic ? 'الاسم (English)' : 'Full Name (English)'} *</Label>
+                <Input
+                  value={editFormData.fullName}
+                  onChange={(e) => setEditFormData({ ...editFormData, fullName: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>{isArabic ? 'الاسم (عربي)' : 'Full Name (Arabic)'}</Label>
+                <Input
+                  dir="rtl"
+                  value={editFormData.fullNameAr}
+                  onChange={(e) => setEditFormData({ ...editFormData, fullNameAr: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>{isArabic ? 'القسم' : 'Department'}</Label>
+              <Select
+                value={editFormData.department}
+                onValueChange={(value) => setEditFormData({ ...editFormData, department: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={isArabic ? 'اختر القسم' : 'Select department'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {departments.map((dept) => (
+                    <SelectItem key={dept.id} value={dept.name}>
+                      {isArabic ? dept.name_ar || dept.name : dept.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>{isArabic ? 'رقم الهاتف' : 'Phone'}</Label>
+              <Input
+                type="tel"
+                value={editFormData.phone}
+                onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
+              />
+            </div>
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setEditDialogOpen(false)}>
+                {isArabic ? 'إلغاء' : 'Cancel'}
+              </Button>
+              <Button type="submit" disabled={updateProfile.isPending}>
+                {updateProfile.isPending && <Loader2 className="h-4 w-4 me-2 animate-spin" />}
+                {isArabic ? 'حفظ التغييرات' : 'Save Changes'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* Permissions Dialog */}
       <PermissionsDialog
