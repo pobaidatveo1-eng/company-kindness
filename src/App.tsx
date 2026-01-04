@@ -23,6 +23,9 @@ import TeamManagement from "./pages/TeamManagement";
 import Employees from "./pages/Employees";
 import Clients from "./pages/Clients";
 import Contracts from "./pages/Contracts";
+import Leads from "./pages/Leads";
+import Meetings from "./pages/Meetings";
+import Chat from "./pages/Chat";
 import DashboardLayout from "./components/layout/DashboardLayout";
 import NotFound from "./pages/NotFound";
 
@@ -56,6 +59,9 @@ const App = () => (
                   <Route path="employees" element={<Employees />} />
                   <Route path="clients" element={<Clients />} />
                   <Route path="contracts" element={<Contracts />} />
+                  <Route path="leads" element={<Leads />} />
+                  <Route path="meetings" element={<Meetings />} />
+                  <Route path="chat" element={<Chat />} />
                 </Route>
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />

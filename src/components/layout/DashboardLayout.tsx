@@ -22,11 +22,14 @@ import {
   Menu,
   Users,
   Briefcase,
+  UserPlus,
+  Video,
+  MessageSquare,
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
 const DashboardLayout = () => {
-  const { t, dir } = useLanguage();
+  const { t, dir, language } = useLanguage();
   const { profile, userRole, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -35,34 +38,47 @@ const DashboardLayout = () => {
   const role = userRole?.role || 'employee';
 
   const getMenuItems = () => {
-    switch (role) {
-      case 'super_admin':
-        return [
-          { title: t('dashboard.companyHealth'), icon: Building2, path: '/dashboard' },
-          { title: t('dashboard.allTasks'), icon: ClipboardList, path: '/dashboard/tasks' },
-          { title: t('nav.clients'), icon: Users, path: '/dashboard/clients' },
-          { title: t('nav.contracts'), icon: Briefcase, path: '/dashboard/contracts' },
-          { title: t('dashboard.aiInsights'), icon: BarChart3, path: '/dashboard/ai-insights' },
-          { title: t('dashboard.companySettings'), icon: Settings, path: '/dashboard/settings' },
-        ];
-      case 'admin':
-        return [
-          { title: t('dashboard.taskDistribution'), icon: LayoutDashboard, path: '/dashboard' },
-          { title: t('dashboard.allTasks'), icon: ClipboardList, path: '/dashboard/tasks' },
-          { title: t('nav.clients'), icon: Users, path: '/dashboard/clients' },
-          { title: t('nav.contracts'), icon: Briefcase, path: '/dashboard/contracts' },
-          { title: t('dashboard.loadBalance'), icon: Scale, path: '/dashboard/balance' },
-          { title: t('dashboard.aiInsights'), icon: BarChart3, path: '/dashboard/ai-insights' },
-        ];
-      default:
-        return [
-          { title: t('dashboard.myTasks'), icon: ClipboardList, path: '/dashboard' },
-          { title: t('dashboard.allTasks'), icon: ClipboardList, path: '/dashboard/tasks' },
-          { title: t('dashboard.upcomingEvents'), icon: Calendar, path: '/dashboard/events' },
-          { title: t('dashboard.manualItems'), icon: FileText, path: '/dashboard/manual' },
-          { title: t('dashboard.myAccount'), icon: User, path: '/dashboard/account' },
-        ];
+    const roleStr = role as string;
+    if (roleStr === 'super_admin') {
+      return [
+        { title: language === 'ar' ? 'لوحة التحكم' : 'Dashboard', icon: Building2, path: '/dashboard' },
+        { title: language === 'ar' ? 'المهام' : 'Tasks', icon: ClipboardList, path: '/dashboard/tasks' },
+        { title: language === 'ar' ? 'العملاء المحتملين' : 'Leads', icon: UserPlus, path: '/dashboard/leads' },
+        { title: language === 'ar' ? 'الاجتماعات' : 'Meetings', icon: Video, path: '/dashboard/meetings' },
+        { title: language === 'ar' ? 'الدردشة' : 'Chat', icon: MessageSquare, path: '/dashboard/chat' },
+        { title: t('nav.clients'), icon: Users, path: '/dashboard/clients' },
+        { title: t('nav.contracts'), icon: Briefcase, path: '/dashboard/contracts' },
+        { title: language === 'ar' ? 'رؤى AI' : 'AI Insights', icon: BarChart3, path: '/dashboard/ai-insights' },
+        { title: t('dashboard.companySettings'), icon: Settings, path: '/dashboard/settings' },
+      ];
     }
+    if (roleStr === 'admin' || roleStr === 'department_manager') {
+      return [
+        { title: language === 'ar' ? 'لوحة التحكم' : 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
+        { title: language === 'ar' ? 'المهام' : 'Tasks', icon: ClipboardList, path: '/dashboard/tasks' },
+        { title: language === 'ar' ? 'العملاء المحتملين' : 'Leads', icon: UserPlus, path: '/dashboard/leads' },
+        { title: language === 'ar' ? 'الاجتماعات' : 'Meetings', icon: Video, path: '/dashboard/meetings' },
+        { title: language === 'ar' ? 'الدردشة' : 'Chat', icon: MessageSquare, path: '/dashboard/chat' },
+        { title: t('nav.clients'), icon: Users, path: '/dashboard/clients' },
+        { title: language === 'ar' ? 'رؤى AI' : 'AI Insights', icon: BarChart3, path: '/dashboard/ai-insights' },
+      ];
+    }
+    if (roleStr === 'sales_staff') {
+      return [
+        { title: language === 'ar' ? 'لوحة التحكم' : 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
+        { title: language === 'ar' ? 'العملاء المحتملين' : 'Leads', icon: UserPlus, path: '/dashboard/leads' },
+        { title: language === 'ar' ? 'الاجتماعات' : 'Meetings', icon: Video, path: '/dashboard/meetings' },
+        { title: language === 'ar' ? 'الدردشة' : 'Chat', icon: MessageSquare, path: '/dashboard/chat' },
+        { title: language === 'ar' ? 'حسابي' : 'My Account', icon: User, path: '/dashboard/account' },
+      ];
+    }
+    return [
+      { title: t('dashboard.myTasks'), icon: ClipboardList, path: '/dashboard' },
+      { title: language === 'ar' ? 'المهام' : 'Tasks', icon: ClipboardList, path: '/dashboard/tasks' },
+      { title: language === 'ar' ? 'الاجتماعات' : 'Meetings', icon: Video, path: '/dashboard/meetings' },
+      { title: language === 'ar' ? 'الدردشة' : 'Chat', icon: MessageSquare, path: '/dashboard/chat' },
+      { title: t('dashboard.myAccount'), icon: User, path: '/dashboard/account' },
+    ];
   };
 
   const menuItems = getMenuItems();

@@ -1,0 +1,413 @@
+import React, { useState } from 'react';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { useMeetings, Meeting, MeetingStatus, CreateMeetingData } from '@/hooks/useMeetings';
+import { useTeamMembers } from '@/hooks/useTasks';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Plus, Calendar, Clock, MapPin, Users, Video, FileText, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { format, isToday, isTomorrow, isThisWeek, isPast } from 'date-fns';
+import { ar } from 'date-fns/locale';
+
+const statusColors: Record<MeetingStatus, string> = {
+  scheduled: 'bg-blue-500',
+  in_progress: 'bg-yellow-500',
+  completed: 'bg-green-500',
+  cancelled: 'bg-red-500',
+};
+
+const statusLabels: Record<MeetingStatus, { ar: string; en: string }> = {
+  scheduled: { ar: 'مجدول', en: 'Scheduled' },
+  in_progress: { ar: 'جاري', en: 'In Progress' },
+  completed: { ar: 'مكتمل', en: 'Completed' },
+  cancelled: { ar: 'ملغي', en: 'Cancelled' },
+};
+
+const meetingTypeLabels: Record<string, { ar: string; en: string }> = {
+  general: { ar: 'عام', en: 'General' },
+  client: { ar: 'مع عميل', en: 'Client' },
+  internal: { ar: 'داخلي', en: 'Internal' },
+  review: { ar: 'مراجعة', en: 'Review' },
+};
+
+const Meetings = () => {
+  const { language } = useLanguage();
+  const { meetings, isLoading, createMeeting, updateMeeting, isCreating } = useMeetings();
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null);
+  const [activeTab, setActiveTab] = useState('upcoming');
+
+  const [formData, setFormData] = useState<CreateMeetingData>({
+    title: '',
+    description: '',
+    meeting_type: 'general',
+    start_time: '',
+    end_time: '',
+    location: '',
+    agenda: '',
+  });
+
+  const upcomingMeetings = meetings.filter(m => 
+    m.status === 'scheduled' && !isPast(new Date(m.start_time))
+  );
+  
+  const todayMeetings = meetings.filter(m => 
+    isToday(new Date(m.start_time))
+  );
+  
+  const completedMeetings = meetings.filter(m => 
+    m.status === 'completed'
+  );
+
+  const handleSubmit = () => {
+    if (selectedMeeting) {
+      updateMeeting({ id: selectedMeeting.id, ...formData });
+    } else {
+      createMeeting(formData);
+    }
+    setIsCreateDialogOpen(false);
+    setSelectedMeeting(null);
+    setFormData({
+      title: '',
+      description: '',
+      meeting_type: 'general',
+      start_time: '',
+      end_time: '',
+      location: '',
+      agenda: '',
+    });
+  };
+
+  const openEditDialog = (meeting: Meeting) => {
+    setSelectedMeeting(meeting);
+    setFormData({
+      title: meeting.title,
+      description: meeting.description || '',
+      meeting_type: meeting.meeting_type,
+      start_time: meeting.start_time.slice(0, 16),
+      end_time: meeting.end_time?.slice(0, 16) || '',
+      location: meeting.location || '',
+      agenda: meeting.agenda || '',
+    });
+    setIsCreateDialogOpen(true);
+  };
+
+  const markAsCompleted = (meeting: Meeting) => {
+    updateMeeting({ id: meeting.id, status: 'completed' });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const renderMeetingCard = (meeting: Meeting) => (
+    <Card key={meeting.id} className="hover:shadow-md transition-shadow">
+      <CardContent className="p-4">
+        <div className="flex flex-col sm:flex-row justify-between gap-4">
+          <div className="flex-1">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <Video className="h-5 w-5 text-primary" />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="font-semibold">{meeting.title}</h3>
+                  <Badge className={`${statusColors[meeting.status]} text-white`}>
+                    {language === 'ar' ? statusLabels[meeting.status].ar : statusLabels[meeting.status].en}
+                  </Badge>
+                  <Badge variant="outline">
+                    {language === 'ar' 
+                      ? meetingTypeLabels[meeting.meeting_type]?.ar 
+                      : meetingTypeLabels[meeting.meeting_type]?.en}
+                  </Badge>
+                </div>
+                {meeting.description && (
+                  <p className="text-sm text-muted-foreground mt-1">{meeting.description}</p>
+                )}
+                <div className="flex flex-wrap gap-4 mt-2 text-sm text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <Calendar className="h-4 w-4" />
+                    {format(new Date(meeting.start_time), 'dd/MM/yyyy', { locale: language === 'ar' ? ar : undefined })}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Clock className="h-4 w-4" />
+                    {format(new Date(meeting.start_time), 'HH:mm')}
+                    {meeting.end_time && ` - ${format(new Date(meeting.end_time), 'HH:mm')}`}
+                  </span>
+                  {meeting.location && (
+                    <span className="flex items-center gap-1">
+                      <MapPin className="h-4 w-4" />
+                      {meeting.location}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            {meeting.status === 'scheduled' && (
+              <Button size="sm" variant="outline" onClick={() => markAsCompleted(meeting)}>
+                <CheckCircle className="h-4 w-4 me-1" />
+                {language === 'ar' ? 'إكمال' : 'Complete'}
+              </Button>
+            )}
+            <Button size="sm" variant="ghost" onClick={() => openEditDialog(meeting)}>
+              {language === 'ar' ? 'تعديل' : 'Edit'}
+            </Button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-2xl font-bold">{language === 'ar' ? 'الاجتماعات' : 'Meetings'}</h1>
+          <p className="text-muted-foreground">
+            {language === 'ar' ? 'جدولة وإدارة الاجتماعات' : 'Schedule and manage meetings'}
+          </p>
+        </div>
+        <Dialog open={isCreateDialogOpen} onOpenChange={(open) => {
+          setIsCreateDialogOpen(open);
+          if (!open) {
+            setSelectedMeeting(null);
+            setFormData({
+              title: '',
+              description: '',
+              meeting_type: 'general',
+              start_time: '',
+              end_time: '',
+              location: '',
+              agenda: '',
+            });
+          }
+        }}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="h-4 w-4 me-2" />
+              {language === 'ar' ? 'جدولة اجتماع' : 'Schedule Meeting'}
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>
+                {selectedMeeting 
+                  ? (language === 'ar' ? 'تعديل الاجتماع' : 'Edit Meeting')
+                  : (language === 'ar' ? 'جدولة اجتماع جديد' : 'Schedule New Meeting')}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label>{language === 'ar' ? 'العنوان' : 'Title'}</Label>
+                <Input
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  placeholder={language === 'ar' ? 'عنوان الاجتماع' : 'Meeting title'}
+                />
+              </div>
+              <div>
+                <Label>{language === 'ar' ? 'النوع' : 'Type'}</Label>
+                <Select value={formData.meeting_type} onValueChange={(value) => setFormData({ ...formData, meeting_type: value })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(meetingTypeLabels).map(([key, labels]) => (
+                      <SelectItem key={key} value={key}>
+                        {language === 'ar' ? labels.ar : labels.en}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>{language === 'ar' ? 'وقت البدء' : 'Start Time'}</Label>
+                  <Input
+                    type="datetime-local"
+                    value={formData.start_time}
+                    onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label>{language === 'ar' ? 'وقت الانتهاء' : 'End Time'}</Label>
+                  <Input
+                    type="datetime-local"
+                    value={formData.end_time}
+                    onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div>
+                <Label>{language === 'ar' ? 'الموقع' : 'Location'}</Label>
+                <Input
+                  value={formData.location}
+                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                  placeholder={language === 'ar' ? 'الموقع أو رابط الاجتماع' : 'Location or meeting link'}
+                />
+              </div>
+              <div>
+                <Label>{language === 'ar' ? 'الوصف' : 'Description'}</Label>
+                <Textarea
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  rows={2}
+                />
+              </div>
+              <div>
+                <Label>{language === 'ar' ? 'جدول الأعمال' : 'Agenda'}</Label>
+                <Textarea
+                  value={formData.agenda}
+                  onChange={(e) => setFormData({ ...formData, agenda: e.target.value })}
+                  rows={3}
+                  placeholder={language === 'ar' ? 'نقاط النقاش...' : 'Discussion points...'}
+                />
+              </div>
+              <Button onClick={handleSubmit} className="w-full" disabled={isCreating || !formData.title || !formData.start_time}>
+                {isCreating ? <Loader2 className="h-4 w-4 animate-spin me-2" /> : null}
+                {selectedMeeting 
+                  ? (language === 'ar' ? 'تحديث' : 'Update')
+                  : (language === 'ar' ? 'جدولة' : 'Schedule')}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+              <Calendar className="h-5 w-5 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">{language === 'ar' ? 'اليوم' : 'Today'}</p>
+              <p className="text-2xl font-bold">{todayMeetings.length}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="p-2 bg-yellow-100 dark:bg-yellow-900 rounded-lg">
+              <Clock className="h-5 w-5 text-yellow-600" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">{language === 'ar' ? 'القادمة' : 'Upcoming'}</p>
+              <p className="text-2xl font-bold">{upcomingMeetings.length}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
+              <CheckCircle className="h-5 w-5 text-green-600" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">{language === 'ar' ? 'مكتملة' : 'Completed'}</p>
+              <p className="text-2xl font-bold">{completedMeetings.length}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
+              <Users className="h-5 w-5 text-purple-600" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">{language === 'ar' ? 'الإجمالي' : 'Total'}</p>
+              <p className="text-2xl font-bold">{meetings.length}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="upcoming">
+            {language === 'ar' ? 'القادمة' : 'Upcoming'}
+            {upcomingMeetings.length > 0 && (
+              <Badge variant="secondary" className="ms-2">{upcomingMeetings.length}</Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="today">
+            {language === 'ar' ? 'اليوم' : 'Today'}
+            {todayMeetings.length > 0 && (
+              <Badge variant="secondary" className="ms-2">{todayMeetings.length}</Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="completed">
+            {language === 'ar' ? 'مكتملة' : 'Completed'}
+          </TabsTrigger>
+          <TabsTrigger value="all">
+            {language === 'ar' ? 'الكل' : 'All'}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="upcoming" className="space-y-4 mt-4">
+          {upcomingMeetings.length === 0 ? (
+            <Card>
+              <CardContent className="p-8 text-center text-muted-foreground">
+                {language === 'ar' ? 'لا توجد اجتماعات قادمة' : 'No upcoming meetings'}
+              </CardContent>
+            </Card>
+          ) : (
+            upcomingMeetings.map(renderMeetingCard)
+          )}
+        </TabsContent>
+
+        <TabsContent value="today" className="space-y-4 mt-4">
+          {todayMeetings.length === 0 ? (
+            <Card>
+              <CardContent className="p-8 text-center text-muted-foreground">
+                {language === 'ar' ? 'لا توجد اجتماعات اليوم' : 'No meetings today'}
+              </CardContent>
+            </Card>
+          ) : (
+            todayMeetings.map(renderMeetingCard)
+          )}
+        </TabsContent>
+
+        <TabsContent value="completed" className="space-y-4 mt-4">
+          {completedMeetings.length === 0 ? (
+            <Card>
+              <CardContent className="p-8 text-center text-muted-foreground">
+                {language === 'ar' ? 'لا توجد اجتماعات مكتملة' : 'No completed meetings'}
+              </CardContent>
+            </Card>
+          ) : (
+            completedMeetings.map(renderMeetingCard)
+          )}
+        </TabsContent>
+
+        <TabsContent value="all" className="space-y-4 mt-4">
+          {meetings.length === 0 ? (
+            <Card>
+              <CardContent className="p-8 text-center text-muted-foreground">
+                {language === 'ar' ? 'لا توجد اجتماعات' : 'No meetings'}
+              </CardContent>
+            </Card>
+          ) : (
+            meetings.map(renderMeetingCard)
+          )}
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+};
+
+export default Meetings;
