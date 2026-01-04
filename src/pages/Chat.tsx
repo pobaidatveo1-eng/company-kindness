@@ -51,10 +51,17 @@ const Chat = () => {
 
   const handleCreateRoom = () => {
     if (!newRoomName.trim()) return;
-    createRoom.mutate({ name: newRoomName, room_type: newRoomType });
-    setIsCreateDialogOpen(false);
-    setNewRoomName('');
-    setNewRoomType('general');
+    createRoom.mutate(
+      { name: newRoomName, room_type: newRoomType },
+      {
+        onSuccess: (room) => {
+          setIsCreateDialogOpen(false);
+          setNewRoomName('');
+          setNewRoomType('general');
+          if (room) setSelectedRoom(room);
+        },
+      }
+    );
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
