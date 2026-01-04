@@ -14,7 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Users, UserPlus, Shield, ShieldCheck, User, Loader2, MoreHorizontal, UserCheck, UserX, Trash2, Settings, Search, Eye, EyeOff } from 'lucide-react';
+import { Users, UserPlus, Shield, ShieldCheck, User, Loader2, MoreHorizontal, UserCheck, UserX, Trash2, Settings, Search, Eye, EyeOff, Key } from 'lucide-react';
+import { PermissionsDialog } from './PermissionsDialog';
 
 const AVAILABLE_PERMISSIONS = [
   { key: 'dashboard', labelAr: 'لوحة التحكم', labelEn: 'Dashboard' },
@@ -51,6 +52,7 @@ export const EmployeesTab = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [permissionsDialogOpen, setPermissionsDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [showPassword, setShowPassword] = useState(false);
 
@@ -435,6 +437,16 @@ export const EmployeesTab = () => {
                                 <DropdownMenuSeparator />
                               </>
                             )}
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setSelectedUser(user);
+                                setPermissionsDialogOpen(true);
+                              }}
+                            >
+                              <Key className="h-4 w-4 me-2" />
+                              {isArabic ? 'الصلاحيات' : 'Permissions'}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
                             <DropdownMenuItem onClick={() => handleToggleActive(user)}>
                               {user.is_active ? (
                                 <>
@@ -493,6 +505,13 @@ export const EmployeesTab = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Permissions Dialog */}
+      <PermissionsDialog
+        open={permissionsDialogOpen}
+        onOpenChange={setPermissionsDialogOpen}
+        user={selectedUser}
+      />
     </div>
   );
 };

@@ -2,6 +2,7 @@ import React from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useMyPermissions, AVAILABLE_PERMISSIONS } from '@/hooks/usePermissions';
 import { Button } from '@/components/ui/button';
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import NotificationBell from '@/components/notifications/NotificationBell';
@@ -28,57 +29,59 @@ import {
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
+const iconMap: Record<string, any> = {
+  dashboard: Building2,
+  tasks: ClipboardList,
+  leads: UserPlus,
+  meetings: Video,
+  chat: MessageSquare,
+  clients: Users,
+  contracts: Briefcase,
+  'ai-insights': BarChart3,
+  settings: Settings,
+  events: Calendar,
+  manual: FileText,
+  account: User,
+};
+
 const DashboardLayout = () => {
   const { t, dir, language } = useLanguage();
   const { profile, userRole, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+  const { data: userPermissions = [] } = useMyPermissions();
 
   const role = userRole?.role || 'employee';
+  const roleStr = role as string;
+  const isAdminOrSuper = roleStr === 'super_admin' || roleStr === 'admin';
 
   const getMenuItems = () => {
-    const roleStr = role as string;
-    if (roleStr === 'super_admin') {
+    // For admins, show all menu items
+    if (isAdminOrSuper) {
       return [
-        { title: language === 'ar' ? 'لوحة التحكم' : 'Dashboard', icon: Building2, path: '/dashboard' },
-        { title: language === 'ar' ? 'المهام' : 'Tasks', icon: ClipboardList, path: '/dashboard/tasks' },
-        { title: language === 'ar' ? 'العملاء المحتملين' : 'Leads', icon: UserPlus, path: '/dashboard/leads' },
-        { title: language === 'ar' ? 'الاجتماعات' : 'Meetings', icon: Video, path: '/dashboard/meetings' },
-        { title: language === 'ar' ? 'الدردشة' : 'Chat', icon: MessageSquare, path: '/dashboard/chat' },
-        { title: t('nav.clients'), icon: Users, path: '/dashboard/clients' },
-        { title: t('nav.contracts'), icon: Briefcase, path: '/dashboard/contracts' },
-        { title: language === 'ar' ? 'رؤى AI' : 'AI Insights', icon: BarChart3, path: '/dashboard/ai-insights' },
-        { title: t('dashboard.companySettings'), icon: Settings, path: '/dashboard/settings' },
+        { title: language === 'ar' ? 'لوحة التحكم' : 'Dashboard', icon: Building2, path: '/dashboard', key: 'dashboard' },
+        { title: language === 'ar' ? 'المهام' : 'Tasks', icon: ClipboardList, path: '/dashboard/tasks', key: 'tasks' },
+        { title: language === 'ar' ? 'العملاء المحتملين' : 'Leads', icon: UserPlus, path: '/dashboard/leads', key: 'leads' },
+        { title: language === 'ar' ? 'الاجتماعات' : 'Meetings', icon: Video, path: '/dashboard/meetings', key: 'meetings' },
+        { title: language === 'ar' ? 'الدردشة' : 'Chat', icon: MessageSquare, path: '/dashboard/chat', key: 'chat' },
+        { title: t('nav.clients'), icon: Users, path: '/dashboard/clients', key: 'clients' },
+        { title: t('nav.contracts'), icon: Briefcase, path: '/dashboard/contracts', key: 'contracts' },
+        { title: language === 'ar' ? 'رؤى AI' : 'AI Insights', icon: BarChart3, path: '/dashboard/ai-insights', key: 'ai-insights' },
+        { title: t('dashboard.companySettings'), icon: Settings, path: '/dashboard/settings', key: 'settings' },
       ];
     }
-    if (roleStr === 'admin' || roleStr === 'department_manager') {
-      return [
-        { title: language === 'ar' ? 'لوحة التحكم' : 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
-        { title: language === 'ar' ? 'المهام' : 'Tasks', icon: ClipboardList, path: '/dashboard/tasks' },
-        { title: language === 'ar' ? 'العملاء المحتملين' : 'Leads', icon: UserPlus, path: '/dashboard/leads' },
-        { title: language === 'ar' ? 'الاجتماعات' : 'Meetings', icon: Video, path: '/dashboard/meetings' },
-        { title: language === 'ar' ? 'الدردشة' : 'Chat', icon: MessageSquare, path: '/dashboard/chat' },
-        { title: t('nav.clients'), icon: Users, path: '/dashboard/clients' },
-        { title: language === 'ar' ? 'رؤى AI' : 'AI Insights', icon: BarChart3, path: '/dashboard/ai-insights' },
-      ];
-    }
-    if (roleStr === 'sales_staff') {
-      return [
-        { title: language === 'ar' ? 'لوحة التحكم' : 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
-        { title: language === 'ar' ? 'العملاء المحتملين' : 'Leads', icon: UserPlus, path: '/dashboard/leads' },
-        { title: language === 'ar' ? 'الاجتماعات' : 'Meetings', icon: Video, path: '/dashboard/meetings' },
-        { title: language === 'ar' ? 'الدردشة' : 'Chat', icon: MessageSquare, path: '/dashboard/chat' },
-        { title: language === 'ar' ? 'حسابي' : 'My Account', icon: User, path: '/dashboard/account' },
-      ];
-    }
-    return [
-      { title: t('dashboard.myTasks'), icon: ClipboardList, path: '/dashboard' },
-      { title: language === 'ar' ? 'المهام' : 'Tasks', icon: ClipboardList, path: '/dashboard/tasks' },
-      { title: language === 'ar' ? 'الاجتماعات' : 'Meetings', icon: Video, path: '/dashboard/meetings' },
-      { title: language === 'ar' ? 'الدردشة' : 'Chat', icon: MessageSquare, path: '/dashboard/chat' },
-      { title: t('dashboard.myAccount'), icon: User, path: '/dashboard/account' },
-    ];
+
+    // For other roles, filter based on permissions
+    const allItems = AVAILABLE_PERMISSIONS.map(p => ({
+      title: language === 'ar' ? p.labelAr : p.labelEn,
+      icon: iconMap[p.key] || LayoutDashboard,
+      path: p.path,
+      key: p.key,
+    }));
+
+    // Filter by user's permissions
+    return allItems.filter(item => userPermissions.includes(item.key));
   };
 
   const menuItems = getMenuItems();
