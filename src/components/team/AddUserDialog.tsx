@@ -38,7 +38,7 @@ const departments = [
 ];
 
 export const AddUserDialog = ({ open, onOpenChange }: AddUserDialogProps) => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { userRole } = useAuth();
   const createUser = useCreateUser();
 
@@ -86,25 +86,15 @@ export const AddUserDialog = ({ open, onOpenChange }: AddUserDialogProps) => {
           <DialogTitle>{t('team.addUser')}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="fullName">{t('team.fullName')} *</Label>
-              <Input
-                id="fullName"
-                value={formData.fullName}
-                onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="fullNameAr">{t('team.fullNameAr')}</Label>
-              <Input
-                id="fullNameAr"
-                dir="rtl"
-                value={formData.fullNameAr}
-                onChange={(e) => setFormData({ ...formData, fullNameAr: e.target.value })}
-              />
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="fullName">{t('team.fullName')} *</Label>
+            <Input
+              id="fullName"
+              value={formData.fullName}
+              onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+              placeholder={language === 'ar' ? 'أدخل الاسم (عربي أو إنجليزي)' : 'Enter name (Arabic or English)'}
+              required
+            />
           </div>
 
           <div className="space-y-2">
