@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useTasks } from '@/hooks/useTasks';
 import { useCompanyUsers } from '@/hooks/useUsers';
+import { useLeads } from '@/hooks/useLeads';
+import { useMeetings } from '@/hooks/useMeetings';
 import { useAIAnalysis } from '@/hooks/useAIAnalysis';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,7 +12,6 @@ import {
   Brain, 
   TrendingUp, 
   AlertTriangle, 
-  CheckCircle2, 
   Clock,
   Target,
   Lightbulb,
@@ -19,17 +20,24 @@ import {
   AlertOctagon,
   Loader2,
   RefreshCw,
-  Sparkles
+  Sparkles,
+  FileText,
+  Calendar,
+  Users
 } from 'lucide-react';
 import { differenceInDays } from 'date-fns';
+
+type AnalysisType = 'performance' | 'workload' | 'risks' | 'recommendations' | 'executive_summary' | 'daily_priorities';
 
 const AIInsights = () => {
   const { language } = useLanguage();
   const { tasks } = useTasks();
   const { data: companyUsers = [] } = useCompanyUsers();
-  const { analyze, isAnalyzing, analysis } = useAIAnalysis();
+  const { leads } = useLeads();
+  const { meetings } = useMeetings();
+  const { analyze, isAnalyzing, results } = useAIAnalysis();
   const isArabic = language === 'ar';
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState<AnalysisType>('performance');
 
   // Calculate insights
   const totalTasks = tasks.length;
@@ -54,10 +62,12 @@ const AIInsights = () => {
     return Math.round(totalDays / completedWithDates.length);
   })();
 
-  const runAnalysis = async (type: 'performance' | 'workload' | 'risks' | 'recommendations') => {
+  const runAnalysis = async (type: AnalysisType) => {
     await analyze(type, {
       tasks,
       employees: companyUsers,
+      leads,
+      meetings,
       completionRate,
       delayedTasks: overdueTasks,
     });
@@ -102,6 +112,15 @@ const AIInsights = () => {
     },
   ];
 
+  const tabs: { id: AnalysisType; icon: React.ElementType; label: { ar: string; en: string } }[] = [
+    { id: 'performance', icon: BarChart3, label: { ar: 'الأداء', en: 'Performance' } },
+    { id: 'workload', icon: Scale, label: { ar: 'الأحمال', en: 'Workload' } },
+    { id: 'risks', icon: AlertOctagon, label: { ar: 'المخاطر', en: 'Risks' } },
+    { id: 'recommendations', icon: Lightbulb, label: { ar: 'التوصيات', en: 'Recommendations' } },
+    { id: 'executive_summary', icon: FileText, label: { ar: 'ملخص تنفيذي', en: 'Executive Summary' } },
+    { id: 'daily_priorities', icon: Calendar, label: { ar: 'أولويات اليوم', en: 'Daily Priorities' } },
+  ];
+
   const getTypeStyles = (type: string) => {
     switch (type) {
       case 'success': return 'border-green-500/50 bg-green-500/5';
@@ -120,16 +139,28 @@ const AIInsights = () => {
     }
   };
 
+  const getTabTitle = (tab: AnalysisType) => {
+    const titles: Record<AnalysisType, { ar: string; en: string }> = {
+      performance: { ar: 'تحليل الأداء', en: 'Performance Analysis' },
+      workload: { ar: 'تحليل الأحمال', en: 'Workload Analysis' },
+      risks: { ar: 'تحليل المخاطر', en: 'Risk Analysis' },
+      recommendations: { ar: 'التوصيات الذكية', en: 'Smart Recommendations' },
+      executive_summary: { ar: 'الملخص التنفيذي', en: 'Executive Summary' },
+      daily_priorities: { ar: 'أولويات اليوم', en: 'Daily Priorities' },
+    };
+    return isArabic ? titles[tab].ar : titles[tab].en;
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Brain className="h-6 w-6 text-primary" />
-            {isArabic ? 'رؤى الذكاء الاصطناعي' : 'AI Insights'}
+            {isArabic ? 'مركز الذكاء الاصطناعي' : 'AI Command Center'}
           </h1>
           <p className="text-muted-foreground">
-            {isArabic ? 'تحليل ذكي لأداء فريقك ومهامك' : 'Smart analysis of your team and task performance'}
+            {isArabic ? 'تحليل ذكي شامل لأداء فريقك والشركة' : 'Comprehensive AI analysis of your team and company performance'}
           </p>
         </div>
       </div>
@@ -155,44 +186,77 @@ const AIInsights = () => {
         })}
       </div>
 
+      {/* Additional Stats Row */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-blue-500/10 rounded-lg">
+                <Users className="h-6 w-6 text-blue-500" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{leads.length}</p>
+                <p className="text-sm text-muted-foreground">{isArabic ? 'عميل محتمل' : 'Leads'}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-purple-500/10 rounded-lg">
+                <Calendar className="h-6 w-6 text-purple-500" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{meetings.filter(m => m.status === 'scheduled').length}</p>
+                <p className="text-sm text-muted-foreground">{isArabic ? 'اجتماع قادم' : 'Upcoming Meetings'}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-green-500/10 rounded-lg">
+                <TrendingUp className="h-6 w-6 text-green-500" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{leads.filter(l => l.status === 'closed_won').length}</p>
+                <p className="text-sm text-muted-foreground">{isArabic ? 'صفقة ناجحة' : 'Closed Won'}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* AI Analysis Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="overview" className="flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" />
-            {isArabic ? 'الأداء' : 'Performance'}
-          </TabsTrigger>
-          <TabsTrigger value="workload" className="flex items-center gap-2">
-            <Scale className="h-4 w-4" />
-            {isArabic ? 'الأحمال' : 'Workload'}
-          </TabsTrigger>
-          <TabsTrigger value="risks" className="flex items-center gap-2">
-            <AlertOctagon className="h-4 w-4" />
-            {isArabic ? 'المخاطر' : 'Risks'}
-          </TabsTrigger>
-          <TabsTrigger value="recommendations" className="flex items-center gap-2">
-            <Lightbulb className="h-4 w-4" />
-            {isArabic ? 'التوصيات' : 'Recommendations'}
-          </TabsTrigger>
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as AnalysisType)} className="space-y-4">
+        <TabsList className="grid w-full grid-cols-3 md:grid-cols-6">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <TabsTrigger key={tab.id} value={tab.id} className="flex items-center gap-1 text-xs md:text-sm">
+                <Icon className="h-4 w-4" />
+                <span className="hidden md:inline">{isArabic ? tab.label.ar : tab.label.en}</span>
+              </TabsTrigger>
+            );
+          })}
         </TabsList>
 
-        {['overview', 'workload', 'risks', 'recommendations'].map((tab) => (
-          <TabsContent key={tab} value={tab}>
+        {tabs.map((tab) => (
+          <TabsContent key={tab.id} value={tab.id}>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
                   <Sparkles className="h-5 w-5 text-primary" />
-                  {tab === 'overview' && (isArabic ? 'تحليل الأداء' : 'Performance Analysis')}
-                  {tab === 'workload' && (isArabic ? 'تحليل الأحمال' : 'Workload Analysis')}
-                  {tab === 'risks' && (isArabic ? 'تحليل المخاطر' : 'Risk Analysis')}
-                  {tab === 'recommendations' && (isArabic ? 'التوصيات الذكية' : 'Smart Recommendations')}
+                  {getTabTitle(tab.id)}
                 </CardTitle>
                 <Button 
-                  onClick={() => runAnalysis(tab === 'overview' ? 'performance' : tab as any)}
-                  disabled={isAnalyzing}
+                  onClick={() => runAnalysis(tab.id)}
+                  disabled={isAnalyzing || results[tab.id]?.loading}
                   size="sm"
                 >
-                  {isAnalyzing ? (
+                  {(isAnalyzing || results[tab.id]?.loading) ? (
                     <Loader2 className="h-4 w-4 me-2 animate-spin" />
                   ) : (
                     <RefreshCw className="h-4 w-4 me-2" />
@@ -201,18 +265,28 @@ const AIInsights = () => {
                 </Button>
               </CardHeader>
               <CardContent>
-                {isAnalyzing ? (
+                {results[tab.id]?.loading ? (
                   <div className="flex flex-col items-center justify-center py-12 text-center">
                     <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
                     <p className="text-muted-foreground">
                       {isArabic ? 'جاري التحليل بالذكاء الاصطناعي...' : 'Analyzing with AI...'}
                     </p>
                   </div>
-                ) : analysis ? (
+                ) : results[tab.id]?.content ? (
                   <div className="prose prose-sm max-w-none dark:prose-invert">
                     <div className="whitespace-pre-wrap text-foreground leading-relaxed">
-                      {analysis}
+                      {results[tab.id].content}
                     </div>
+                  </div>
+                ) : results[tab.id]?.error ? (
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <AlertTriangle className="h-16 w-16 text-destructive/30 mb-4" />
+                    <h3 className="font-medium text-lg mb-2 text-destructive">
+                      {isArabic ? 'حدث خطأ' : 'Error Occurred'}
+                    </h3>
+                    <p className="text-muted-foreground max-w-md">
+                      {results[tab.id].error}
+                    </p>
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -236,10 +310,10 @@ const AIInsights = () => {
       {/* Summary Stats */}
       <Card>
         <CardHeader>
-          <CardTitle>{isArabic ? 'ملخص الأداء' : 'Performance Summary'}</CardTitle>
+          <CardTitle>{isArabic ? 'ملخص الأداء العام' : 'Overall Performance Summary'}</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-4 text-center">
+          <div className="grid gap-4 md:grid-cols-5 text-center">
             <div className="p-4 rounded-lg bg-muted">
               <p className="text-2xl font-bold text-primary">{totalTasks}</p>
               <p className="text-sm text-muted-foreground">{isArabic ? 'إجمالي المهام' : 'Total Tasks'}</p>
@@ -257,6 +331,10 @@ const AIInsights = () => {
             <div className="p-4 rounded-lg bg-destructive/10">
               <p className="text-2xl font-bold text-destructive">{overdueTasks}</p>
               <p className="text-sm text-muted-foreground">{isArabic ? 'متأخرة' : 'Overdue'}</p>
+            </div>
+            <div className="p-4 rounded-lg bg-blue-500/10">
+              <p className="text-2xl font-bold text-blue-500">{companyUsers.length}</p>
+              <p className="text-sm text-muted-foreground">{isArabic ? 'الفريق' : 'Team'}</p>
             </div>
           </div>
         </CardContent>

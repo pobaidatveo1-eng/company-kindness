@@ -6,11 +6,13 @@ const corsHeaders = {
 };
 
 interface AnalysisRequest {
-  type: 'performance' | 'workload' | 'risks' | 'recommendations';
+  type: 'performance' | 'workload' | 'risks' | 'recommendations' | 'executive_summary' | 'daily_priorities';
   data: {
     tasks?: any[];
     employees?: any[];
     departments?: any[];
+    leads?: any[];
+    meetings?: any[];
     completionRate?: number;
     delayedTasks?: number;
   };
@@ -32,20 +34,104 @@ serve(async (req) => {
 
     const systemPrompts: Record<string, string> = {
       performance: language === 'ar' 
-        ? `أنت محلل أداء ذكي. قم بتحليل بيانات المهام والفريق وقدم تقييماً شاملاً للأداء مع نقاط القوة والضعف. كن موجزاً ومحدداً. رد بالعربية.`
-        : `You are a smart performance analyst. Analyze task and team data and provide a comprehensive performance evaluation with strengths and weaknesses. Be concise and specific.`,
+        ? `أنت محلل أداء ذكي لوكالة تسويق. قم بتحليل بيانات المهام والفريق وقدم تقييماً شاملاً للأداء:
+- نسبة الإنجاز والمقارنة بالأهداف
+- أداء الأقسام المختلفة
+- الموظفين الأكثر إنتاجية
+- نقاط القوة والضعف
+كن موجزاً ومحدداً. قدم النتائج بتنسيق واضح.`
+        : `You are a smart performance analyst for a marketing agency. Analyze task and team data and provide a comprehensive performance evaluation:
+- Completion rate and comparison to goals
+- Department performance
+- Top performing employees
+- Strengths and weaknesses
+Be concise and specific. Present results in a clear format.`,
       
       workload: language === 'ar'
-        ? `أنت خبير في توازن أحمال العمل. حلل توزيع المهام على الموظفين والأقسام وحدد من يعاني من ضغط زائد ومن لديه طاقة إضافية. قدم توصيات محددة لإعادة التوزيع. رد بالعربية.`
-        : `You are a workload balance expert. Analyze task distribution across employees and departments, identify overloaded and underloaded resources. Provide specific redistribution recommendations.`,
+        ? `أنت خبير في توازن أحمال العمل. حلل توزيع المهام على الموظفين والأقسام:
+- من يعاني من ضغط زائد (أكثر من المتوسط)
+- من لديه طاقة إضافية
+- توصيات محددة لإعادة التوزيع
+- تحذيرات من الاحتراق الوظيفي
+قدم التوصيات بشكل عملي ومباشر.`
+        : `You are a workload balance expert. Analyze task distribution across employees and departments:
+- Who is overloaded (above average)
+- Who has extra capacity
+- Specific redistribution recommendations
+- Burnout warnings
+Provide practical and direct recommendations.`,
       
       risks: language === 'ar'
-        ? `أنت محلل مخاطر. حدد المخاطر المحتملة من البيانات مثل المهام المتأخرة، الموظفين المثقلين، الأقسام المتعثرة. صنف المخاطر حسب الخطورة (عالية، متوسطة، منخفضة). رد بالعربية.`
-        : `You are a risk analyst. Identify potential risks from data such as delayed tasks, overloaded employees, struggling departments. Classify risks by severity (high, medium, low).`,
+        ? `أنت محلل مخاطر متخصص. حدد المخاطر المحتملة:
+🔴 مخاطر عالية: المهام المتأخرة بشكل كبير، عملاء معرضين للخطر
+🟡 مخاطر متوسطة: مهام قريبة من الموعد، ضغط متزايد
+🟢 مخاطر منخفضة: مؤشرات تحتاج مراقبة
+لكل خطر، قدم التأثير المتوقع وخطوات التخفيف.`
+        : `You are a specialized risk analyst. Identify potential risks:
+🔴 High risks: Significantly delayed tasks, at-risk clients
+🟡 Medium risks: Tasks nearing deadlines, increasing pressure
+🟢 Low risks: Indicators that need monitoring
+For each risk, provide expected impact and mitigation steps.`,
       
       recommendations: language === 'ar'
-        ? `أنت مستشار إداري ذكي. بناءً على البيانات، قدم 5 توصيات عملية وقابلة للتنفيذ لتحسين الأداء العام. ركز على الأولويات. رد بالعربية.`
-        : `You are a smart management consultant. Based on the data, provide 5 practical and actionable recommendations to improve overall performance. Focus on priorities.`,
+        ? `أنت مستشار إداري ذكي. بناءً على البيانات، قدم 5 توصيات عملية:
+1. التوصية ونوعها (عاجلة/هامة/تحسينية)
+2. الفائدة المتوقعة
+3. خطوات التنفيذ
+4. المسؤول المقترح
+رتب التوصيات حسب الأولوية والتأثير.`
+        : `You are a smart management consultant. Based on the data, provide 5 practical recommendations:
+1. Recommendation and type (urgent/important/improvement)
+2. Expected benefit
+3. Implementation steps
+4. Suggested responsible party
+Rank recommendations by priority and impact.`,
+
+      executive_summary: language === 'ar'
+        ? `أنت كاتب تقارير تنفيذية محترف. اكتب ملخصاً تنفيذياً شاملاً للإدارة العليا:
+
+📊 نظرة عامة على صحة الشركة
+✅ أهم الإنجازات هذه الفترة
+⚠️ أهم التحديات والمخاطر
+📈 المؤشرات الرئيسية (KPIs)
+🎯 التوقعات والتوصيات للفترة القادمة
+
+اكتب بأسلوب احترافي ومختصر مناسب للمدراء التنفيذيين.`
+        : `You are a professional executive report writer. Write a comprehensive executive summary for senior management:
+
+📊 Company Health Overview
+✅ Key Achievements This Period
+⚠️ Key Challenges and Risks
+📈 Key Performance Indicators (KPIs)
+🎯 Outlook and Recommendations for Next Period
+
+Write in a professional and concise style suitable for executives.`,
+
+      daily_priorities: language === 'ar'
+        ? `أنت مساعد إنتاجية ذكي. بناءً على المهام والبيانات، حدد أولويات اليوم:
+
+🔥 المهام العاجلة (يجب إنجازها اليوم)
+⚡ المهام الهامة (تحتاج اهتمام)
+📋 المهام الروتينية (يمكن تأجيلها إذا لزم)
+
+لكل مهمة، اذكر:
+- سبب الأولوية
+- الوقت المقترح للإنجاز
+- تحذيرات إن وجدت
+
+قدم نصائح عملية لإدارة الوقت بفعالية.`
+        : `You are an intelligent productivity assistant. Based on tasks and data, set today's priorities:
+
+🔥 Urgent Tasks (must be done today)
+⚡ Important Tasks (need attention)
+📋 Routine Tasks (can be postponed if needed)
+
+For each task, mention:
+- Reason for priority
+- Suggested time for completion
+- Warnings if any
+
+Provide practical tips for effective time management.`,
     };
 
     const userMessage = JSON.stringify({
@@ -56,6 +142,8 @@ serve(async (req) => {
         completionRate: data.completionRate || 0,
         totalEmployees: data.employees?.length || 0,
         departments: data.departments?.length || 0,
+        totalLeads: data.leads?.length || 0,
+        upcomingMeetings: data.meetings?.filter((m: any) => m.status === 'scheduled').length || 0,
       },
       tasksByStatus: {
         pending: data.tasks?.filter((t: any) => t.status === 'pending').length || 0,
@@ -68,6 +156,12 @@ serve(async (req) => {
         medium: data.tasks?.filter((t: any) => t.priority === 'medium').length || 0,
         low: data.tasks?.filter((t: any) => t.priority === 'low').length || 0,
       },
+      leadsByStatus: data.leads ? {
+        new: data.leads?.filter((l: any) => l.status === 'new').length || 0,
+        interested: data.leads?.filter((l: any) => l.status === 'interested').length || 0,
+        closedWon: data.leads?.filter((l: any) => l.status === 'closed_won').length || 0,
+        closedLost: data.leads?.filter((l: any) => l.status === 'closed_lost').length || 0,
+      } : undefined,
     });
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -82,7 +176,7 @@ serve(async (req) => {
           { role: "system", content: systemPrompts[type] },
           { role: "user", content: userMessage }
         ],
-        max_tokens: 1000,
+        max_tokens: 1500,
       }),
     });
 
