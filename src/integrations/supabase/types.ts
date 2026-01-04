@@ -1161,6 +1161,9 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_access_chat_room: { Args: { _room_id: string }; Returns: boolean }
+      can_manage_chat_room: { Args: { _room_id: string }; Returns: boolean }
+      get_current_profile_id: { Args: never; Returns: string }
       get_user_company_id: { Args: { _user_id: string }; Returns: string }
       get_user_role: {
         Args: { _company_id: string; _user_id: string }
