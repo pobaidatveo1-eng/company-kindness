@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { forwardRef } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui/button';
 import { Globe } from 'lucide-react';
 
-export const LanguageSwitcher = () => {
+export const LanguageSwitcher = forwardRef<HTMLButtonElement>((_, ref) => {
   const { language, setLanguage } = useLanguage();
 
   const toggleLanguage = () => {
@@ -12,6 +12,7 @@ export const LanguageSwitcher = () => {
 
   return (
     <Button
+      ref={ref}
       variant="ghost"
       size="icon"
       onClick={toggleLanguage}
@@ -24,4 +25,6 @@ export const LanguageSwitcher = () => {
       </span>
     </Button>
   );
-};
+});
+
+LanguageSwitcher.displayName = 'LanguageSwitcher';

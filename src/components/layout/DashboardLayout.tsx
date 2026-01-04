@@ -57,31 +57,25 @@ const DashboardLayout = () => {
   const isAdminOrSuper = roleStr === 'super_admin' || roleStr === 'admin';
 
   const getMenuItems = () => {
+    const allMenuItems = [
+      { title: t('nav.dashboard'), icon: Building2, path: '/dashboard', key: 'dashboard' },
+      { title: t('nav.tasks'), icon: ClipboardList, path: '/dashboard/tasks', key: 'tasks' },
+      { title: t('nav.leads'), icon: UserPlus, path: '/dashboard/leads', key: 'leads' },
+      { title: t('nav.meetings'), icon: Video, path: '/dashboard/meetings', key: 'meetings' },
+      { title: t('nav.chat'), icon: MessageSquare, path: '/dashboard/chat', key: 'chat' },
+      { title: t('nav.clients'), icon: Users, path: '/dashboard/clients', key: 'clients' },
+      { title: t('nav.contracts'), icon: Briefcase, path: '/dashboard/contracts', key: 'contracts' },
+      { title: t('nav.aiInsights'), icon: BarChart3, path: '/dashboard/ai-insights', key: 'ai-insights' },
+      { title: t('dashboard.companySettings'), icon: Settings, path: '/dashboard/settings', key: 'settings' },
+    ];
+
     // For admins, show all menu items
     if (isAdminOrSuper) {
-      return [
-        { title: language === 'ar' ? 'لوحة التحكم' : 'Dashboard', icon: Building2, path: '/dashboard', key: 'dashboard' },
-        { title: language === 'ar' ? 'المهام' : 'Tasks', icon: ClipboardList, path: '/dashboard/tasks', key: 'tasks' },
-        { title: language === 'ar' ? 'العملاء المحتملين' : 'Leads', icon: UserPlus, path: '/dashboard/leads', key: 'leads' },
-        { title: language === 'ar' ? 'الاجتماعات' : 'Meetings', icon: Video, path: '/dashboard/meetings', key: 'meetings' },
-        { title: language === 'ar' ? 'الدردشة' : 'Chat', icon: MessageSquare, path: '/dashboard/chat', key: 'chat' },
-        { title: t('nav.clients'), icon: Users, path: '/dashboard/clients', key: 'clients' },
-        { title: t('nav.contracts'), icon: Briefcase, path: '/dashboard/contracts', key: 'contracts' },
-        { title: language === 'ar' ? 'رؤى AI' : 'AI Insights', icon: BarChart3, path: '/dashboard/ai-insights', key: 'ai-insights' },
-        { title: t('dashboard.companySettings'), icon: Settings, path: '/dashboard/settings', key: 'settings' },
-      ];
+      return allMenuItems;
     }
 
     // For other roles, filter based on permissions
-    const allItems = AVAILABLE_PERMISSIONS.map(p => ({
-      title: language === 'ar' ? p.labelAr : p.labelEn,
-      icon: iconMap[p.key] || LayoutDashboard,
-      path: p.path,
-      key: p.key,
-    }));
-
-    // Filter by user's permissions
-    return allItems.filter(item => userPermissions.includes(item.key));
+    return allMenuItems.filter(item => userPermissions.includes(item.key));
   };
 
   const menuItems = getMenuItems();

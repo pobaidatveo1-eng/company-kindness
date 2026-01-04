@@ -27,7 +27,7 @@ const signupSchema = loginSchema.extend({
   path: ['confirmPassword'],
 });
 
-const Auth = () => {
+const Auth: React.FC = () => {
   const { t, language, dir } = useLanguage();
   const { signIn, signUp, user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
