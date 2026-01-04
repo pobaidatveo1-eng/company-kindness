@@ -23,9 +23,10 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
 const AdminDashboard = () => {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { profile } = useAuth();
   const navigate = useNavigate();
+  const isArabic = language === 'ar';
 
   // Fetch team members with their task counts
   const { data: teamMembers = [], isLoading: loadingTeam } = useQuery({
@@ -106,7 +107,7 @@ const AdminDashboard = () => {
       path: '/dashboard/balance',
     },
     {
-      title: 'الفريق',
+      title: isArabic ? 'الفريق' : 'Team',
       icon: Users,
       value: teamMembers.filter(m => m.is_active).length.toString(),
       color: 'text-blue-500',
@@ -117,28 +118,28 @@ const AdminDashboard = () => {
 
   const quickActions = [
     { 
-      title: 'جميع المهام', 
+      title: isArabic ? 'جميع المهام' : 'All Tasks', 
       icon: ClipboardList, 
       path: '/dashboard/tasks',
       color: 'text-primary',
       bgColor: 'bg-primary/10'
     },
     { 
-      title: 'المهام المتأخرة', 
+      title: t('dashboard.delayedTasks'), 
       icon: AlertTriangle, 
       path: '/dashboard/delayed',
       color: 'text-destructive',
       bgColor: 'bg-destructive/10'
     },
     { 
-      title: 'إدارة الفريق', 
+      title: isArabic ? 'إدارة الفريق' : 'Team Management', 
       icon: Users, 
       path: '/dashboard/team',
       color: 'text-blue-500',
       bgColor: 'bg-blue-500/10'
     },
     { 
-      title: 'توازن الأحمال', 
+      title: t('dashboard.loadBalance'), 
       icon: Scale, 
       path: '/dashboard/balance',
       color: 'text-green-500',
@@ -159,9 +160,11 @@ const AdminDashboard = () => {
       {/* Welcome */}
       <div>
         <h2 className="text-2xl font-bold text-foreground">
-          مرحباً، {profile?.full_name || 'المدير'} 👋
+          {t('dashboard.welcome')}، {profile?.full_name || (isArabic ? 'المدير' : 'Admin')} 👋
         </h2>
-        <p className="text-muted-foreground">لوحة تحكم المدير - إدارة الفريق والمهام</p>
+        <p className="text-muted-foreground">
+          {isArabic ? 'لوحة تحكم المدير - إدارة الفريق والمهام' : 'Admin Dashboard - Team and Task Management'}
+        </p>
       </div>
 
       {/* Quick Stats */}
@@ -192,7 +195,7 @@ const AdminDashboard = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Settings className="h-5 w-5 text-primary" />
-            إجراءات سريعة
+            {t('dashboard.quickActions')}
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -220,7 +223,7 @@ const AdminDashboard = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Users className="h-5 w-5 text-primary" />
-              أداء الفريق
+              {t('team.performance')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -229,9 +232,9 @@ const AdminDashboard = () => {
                 <div key={member.id} className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="font-medium">{member.name}</p>
+                      <p className="font-medium">{isArabic ? (member.name) : (member.name)}</p>
                       <p className="text-xs text-muted-foreground">
-                        {member.department ? t(`department.${member.department}`) : 'غير محدد'}
+                        {member.department ? t(`departments.${member.department}`) : (isArabic ? 'غير محدد' : 'Not set')}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -245,7 +248,9 @@ const AdminDashboard = () => {
                   />
                 </div>
               )) : (
-                <p className="text-center text-muted-foreground py-4">لا توجد مهام موزعة بعد</p>
+                <p className="text-center text-muted-foreground py-4">
+                  {isArabic ? 'لا توجد مهام موزعة بعد' : 'No tasks distributed yet'}
+                </p>
               )}
             </div>
           </CardContent>
@@ -270,19 +275,21 @@ const AdminDashboard = () => {
                     className="flex items-center justify-between p-3 bg-destructive/5 rounded-lg border-r-4 border-destructive"
                   >
                     <div>
-                      <p className="font-medium">{task.title_ar || task.title}</p>
+                      <p className="font-medium">{isArabic ? (task.title_ar || task.title) : task.title}</p>
                       <p className="text-sm text-muted-foreground">
-                        {assignee?.full_name_ar || assignee?.full_name || 'غير معين'}
+                        {isArabic ? (assignee?.full_name_ar || assignee?.full_name || 'غير معين') : (assignee?.full_name || 'Unassigned')}
                       </p>
                     </div>
                     <div className="flex items-center gap-1 text-destructive">
                       <Clock className="h-4 w-4" />
-                      <span className="text-sm font-medium">{daysLate} أيام</span>
+                      <span className="text-sm font-medium">{daysLate} {isArabic ? 'أيام' : 'days'}</span>
                     </div>
                   </div>
                 );
               }) : (
-                <p className="text-center text-muted-foreground py-4">لا توجد مهام متأخرة 🎉</p>
+                <p className="text-center text-muted-foreground py-4">
+                  {isArabic ? 'لا توجد مهام متأخرة 🎉' : 'No delayed tasks 🎉'}
+                </p>
               )}
             </div>
           </CardContent>
@@ -294,26 +301,26 @@ const AdminDashboard = () => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-green-500" />
-            ملخص حالة المهام
+            {isArabic ? 'ملخص حالة المهام' : 'Task Status Summary'}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
             <div className="p-4 bg-amber-500/10 rounded-lg">
               <p className="text-3xl font-bold text-amber-500">{pendingTasks}</p>
-              <p className="text-sm text-muted-foreground">قيد الانتظار</p>
+              <p className="text-sm text-muted-foreground">{t('tasks.pending')}</p>
             </div>
             <div className="p-4 bg-blue-500/10 rounded-lg">
               <p className="text-3xl font-bold text-blue-500">{inProgressTasks}</p>
-              <p className="text-sm text-muted-foreground">قيد التنفيذ</p>
+              <p className="text-sm text-muted-foreground">{t('tasks.inProgress')}</p>
             </div>
             <div className="p-4 bg-green-500/10 rounded-lg">
               <p className="text-3xl font-bold text-green-500">{completedTasks}</p>
-              <p className="text-sm text-muted-foreground">مكتملة</p>
+              <p className="text-sm text-muted-foreground">{t('tasks.completed')}</p>
             </div>
             <div className="p-4 bg-destructive/10 rounded-lg">
               <p className="text-3xl font-bold text-destructive">{delayedTasks.length}</p>
-              <p className="text-sm text-muted-foreground">متأخرة</p>
+              <p className="text-sm text-muted-foreground">{t('tasks.overdue')}</p>
             </div>
           </div>
         </CardContent>

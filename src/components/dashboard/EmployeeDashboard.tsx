@@ -45,15 +45,15 @@ const EmployeeDashboard = () => {
     const minutesUntil = differenceInMinutes(date, now);
 
     if (minutesUntil <= 0) {
-      return { label: 'الآن', urgent: true };
+      return { label: isArabic ? 'الآن' : 'Now', urgent: true };
     } else if (minutesUntil <= 15) {
-      return { label: `خلال ${minutesUntil} دقيقة`, urgent: true };
+      return { label: isArabic ? `خلال ${minutesUntil} دقيقة` : `In ${minutesUntil} min`, urgent: true };
     } else if (minutesUntil <= 60) {
-      return { label: `خلال ${minutesUntil} دقيقة`, urgent: false };
+      return { label: isArabic ? `خلال ${minutesUntil} دقيقة` : `In ${minutesUntil} min`, urgent: false };
     } else if (isToday(date)) {
-      return { label: `اليوم ${format(date, 'h:mm a', { locale: dateLocale })}`, urgent: false };
+      return { label: `${isArabic ? 'اليوم' : 'Today'} ${format(date, 'h:mm a', { locale: dateLocale })}`, urgent: false };
     } else if (isTomorrow(date)) {
-      return { label: `غداً ${format(date, 'h:mm a', { locale: dateLocale })}`, urgent: false };
+      return { label: `${isArabic ? 'غداً' : 'Tomorrow'} ${format(date, 'h:mm a', { locale: dateLocale })}`, urgent: false };
     } else {
       return { label: format(date, 'dd MMM h:mm a', { locale: dateLocale }), urgent: false };
     }
@@ -79,21 +79,21 @@ const EmployeeDashboard = () => {
       bgColor: 'bg-primary/10',
     },
     {
-      title: 'قيد التنفيذ',
+      title: t('tasks.inProgress'),
       icon: Clock,
       count: inProgressTasks.length,
       color: 'text-warning',
       bgColor: 'bg-warning/10',
     },
     {
-      title: 'منجزة',
+      title: t('tasks.completed'),
       icon: CheckCircle2,
       count: completedTasks.length,
       color: 'text-success',
       bgColor: 'bg-success/10',
     },
     {
-      title: 'معلقة',
+      title: t('tasks.pending'),
       icon: AlertTriangle,
       count: pendingTasks.length,
       color: 'text-muted-foreground',
@@ -115,13 +115,13 @@ const EmployeeDashboard = () => {
   const getStatusLabel = (status: TaskStatus) => {
     switch (status) {
       case 'completed':
-        return 'منجزة';
+        return t('tasks.completed');
       case 'in_progress':
-        return 'قيد التنفيذ';
+        return t('tasks.inProgress');
       case 'cancelled':
-        return 'ملغاة';
+        return t('tasks.cancelled');
       default:
-        return 'معلقة';
+        return t('tasks.pending');
     }
   };
 
@@ -140,13 +140,13 @@ const EmployeeDashboard = () => {
   const getPriorityLabel = (priority: string) => {
     switch (priority) {
       case 'urgent':
-        return 'عاجل';
+        return t('priority.urgent');
       case 'high':
-        return 'عالي';
+        return t('priority.high');
       case 'medium':
-        return 'متوسط';
+        return t('priority.medium');
       default:
-        return 'منخفض';
+        return t('priority.low');
     }
   };
 
@@ -171,9 +171,11 @@ const EmployeeDashboard = () => {
       {/* Welcome */}
       <div>
         <h2 className="text-2xl font-bold text-foreground">
-          مرحباً، {profile?.full_name || 'الموظف'} 👋
+          {t('dashboard.welcome')}، {profile?.full_name || (isArabic ? 'الموظف' : 'Employee')} 👋
         </h2>
-        <p className="text-muted-foreground">إليك ملخص مهامك</p>
+        <p className="text-muted-foreground">
+          {isArabic ? 'إليك ملخص مهامك' : 'Here\'s your task summary'}
+        </p>
       </div>
 
       {/* Quick Stats */}
@@ -203,16 +205,18 @@ const EmployeeDashboard = () => {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <ClipboardList className="h-5 w-5 text-primary" />
-            المهام المسندة إليك
+            {isArabic ? 'المهام المسندة إليك' : 'Your Assigned Tasks'}
           </CardTitle>
           <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard/tasks')}>
-            عرض الكل
+            {t('common.viewAll')}
             <ArrowRight className="h-4 w-4 mr-2" />
           </Button>
         </CardHeader>
         <CardContent>
           {myTasks.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">لا توجد مهام مسندة إليك حالياً</p>
+            <p className="text-muted-foreground text-center py-8">
+              {isArabic ? 'لا توجد مهام مسندة إليك حالياً' : 'No tasks assigned to you'}
+            </p>
           ) : (
             <div className="space-y-3">
               {myTasks.slice(0, 5).map((task) => (
@@ -224,11 +228,11 @@ const EmployeeDashboard = () => {
                     {getStatusIcon(task.status)}
                     <div className="flex-1">
                       <span className={task.status === 'completed' ? 'line-through text-muted-foreground' : ''}>
-                        {task.title_ar || task.title}
+                        {isArabic ? (task.title_ar || task.title) : task.title}
                       </span>
                       {task.due_date && (
                         <p className="text-xs text-muted-foreground">
-                          موعد التسليم: {new Date(task.due_date).toLocaleDateString('ar-SA')}
+                          {isArabic ? 'موعد التسليم:' : 'Due:'} {new Date(task.due_date).toLocaleDateString(isArabic ? 'ar-SA' : 'en-US')}
                         </p>
                       )}
                     </div>
@@ -241,13 +245,13 @@ const EmployeeDashboard = () => {
                     {task.status === 'pending' && (
                       <Button size="sm" variant="outline" onClick={() => handleStartTask(task)}>
                         <Play className="h-3 w-3 ml-1" />
-                        بدء
+                        {isArabic ? 'بدء' : 'Start'}
                       </Button>
                     )}
                     {task.status === 'in_progress' && (
                       <Button size="sm" variant="default" onClick={() => handleCompleteTask(task)}>
                         <CheckCircle2 className="h-3 w-3 ml-1" />
-                        إنجاز
+                        {isArabic ? 'إنجاز' : 'Complete'}
                       </Button>
                     )}
                   </div>
@@ -264,7 +268,7 @@ const EmployeeDashboard = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5 text-blue-500" />
-              مهام اليوم
+              {t('dashboard.todayTasks')}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -277,7 +281,7 @@ const EmployeeDashboard = () => {
                   <div className="flex items-center gap-3">
                     {getStatusIcon(task.status)}
                     <div>
-                      <p className="font-medium">{task.title_ar || task.title}</p>
+                      <p className="font-medium">{isArabic ? (task.title_ar || task.title) : task.title}</p>
                       <p className="text-sm text-muted-foreground">{getStatusLabel(task.status)}</p>
                     </div>
                   </div>
@@ -296,16 +300,18 @@ const EmployeeDashboard = () => {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <Video className="h-5 w-5 text-primary" />
-            الاجتماعات القادمة
+            {t('dashboard.upcomingMeetings')}
           </CardTitle>
           <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard/meetings')}>
-            عرض الكل
+            {t('common.viewAll')}
             <ArrowRight className="h-4 w-4 mr-2" />
           </Button>
         </CardHeader>
         <CardContent>
           {upcomingMeetings.length === 0 ? (
-            <p className="text-muted-foreground text-center py-8">لا توجد اجتماعات قادمة</p>
+            <p className="text-muted-foreground text-center py-8">
+              {isArabic ? 'لا توجد اجتماعات قادمة' : 'No upcoming meetings'}
+            </p>
           ) : (
             <div className="space-y-3">
               {upcomingMeetings.map((meeting) => {
