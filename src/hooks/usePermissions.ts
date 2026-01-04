@@ -3,20 +3,75 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 
+// Permission categories for better organization
+export const PERMISSION_CATEGORIES = {
+  management: {
+    labelAr: 'الإدارة',
+    labelEn: 'Management',
+  },
+  operations: {
+    labelAr: 'العمليات',
+    labelEn: 'Operations',
+  },
+  sales: {
+    labelAr: 'المبيعات',
+    labelEn: 'Sales',
+  },
+  communication: {
+    labelAr: 'التواصل',
+    labelEn: 'Communication',
+  },
+  settings: {
+    labelAr: 'الإعدادات',
+    labelEn: 'Settings',
+  },
+};
+
 export const AVAILABLE_PERMISSIONS = [
-  { key: 'dashboard', labelAr: 'لوحة التحكم', labelEn: 'Dashboard', path: '/dashboard' },
-  { key: 'tasks', labelAr: 'المهام', labelEn: 'Tasks', path: '/dashboard/tasks' },
-  { key: 'leads', labelAr: 'العملاء المحتملين', labelEn: 'Leads', path: '/dashboard/leads' },
-  { key: 'meetings', labelAr: 'الاجتماعات', labelEn: 'Meetings', path: '/dashboard/meetings' },
-  { key: 'chat', labelAr: 'الدردشة', labelEn: 'Chat', path: '/dashboard/chat' },
-  { key: 'clients', labelAr: 'العملاء', labelEn: 'Clients', path: '/dashboard/clients' },
-  { key: 'contracts', labelAr: 'العقود', labelEn: 'Contracts', path: '/dashboard/contracts' },
-  { key: 'ai-insights', labelAr: 'رؤى AI', labelEn: 'AI Insights', path: '/dashboard/ai-insights' },
-  { key: 'settings', labelAr: 'الإعدادات', labelEn: 'Settings', path: '/dashboard/settings' },
-  { key: 'events', labelAr: 'الأحداث', labelEn: 'Events', path: '/dashboard/events' },
-  { key: 'manual', labelAr: 'العناصر اليدوية', labelEn: 'Manual Items', path: '/dashboard/manual' },
-  { key: 'account', labelAr: 'حسابي', labelEn: 'My Account', path: '/dashboard/account' },
+  // Management permissions
+  { key: 'dashboard', labelAr: 'لوحة التحكم', labelEn: 'Dashboard', path: '/dashboard', category: 'management' },
+  { key: 'departments', labelAr: 'الأقسام', labelEn: 'Departments', path: '/dashboard/departments', category: 'management' },
+  { key: 'employees', labelAr: 'الموظفين', labelEn: 'Employees', path: '/dashboard/employees', category: 'management' },
+  { key: 'team-management', labelAr: 'إدارة الفريق', labelEn: 'Team Management', path: '/dashboard/team-management', category: 'management' },
+  { key: 'balance', labelAr: 'توازن العمل', labelEn: 'Load Balance', path: '/dashboard/balance', category: 'management' },
+  { key: 'delayed', labelAr: 'المهام المتأخرة', labelEn: 'Delayed Tasks', path: '/dashboard/delayed', category: 'management' },
+  
+  // Operations permissions
+  { key: 'tasks', labelAr: 'المهام', labelEn: 'Tasks', path: '/dashboard/tasks', category: 'operations' },
+  { key: 'events', labelAr: 'الأحداث', labelEn: 'Events', path: '/dashboard/events', category: 'operations' },
+  { key: 'manual', labelAr: 'العناصر اليدوية', labelEn: 'Manual Items', path: '/dashboard/manual', category: 'operations' },
+  { key: 'meetings', labelAr: 'الاجتماعات', labelEn: 'Meetings', path: '/dashboard/meetings', category: 'operations' },
+  
+  // Sales permissions
+  { key: 'leads', labelAr: 'العملاء المحتملين', labelEn: 'Leads', path: '/dashboard/leads', category: 'sales' },
+  { key: 'clients', labelAr: 'العملاء', labelEn: 'Clients', path: '/dashboard/clients', category: 'sales' },
+  { key: 'contracts', labelAr: 'العقود', labelEn: 'Contracts', path: '/dashboard/contracts', category: 'sales' },
+  
+  // Communication permissions
+  { key: 'chat', labelAr: 'الدردشة', labelEn: 'Chat', path: '/dashboard/chat', category: 'communication' },
+  
+  // Settings & AI permissions
+  { key: 'ai-insights', labelAr: 'رؤى AI', labelEn: 'AI Insights', path: '/dashboard/ai-insights', category: 'settings' },
+  { key: 'settings', labelAr: 'إعدادات الشركة', labelEn: 'Company Settings', path: '/dashboard/settings', category: 'settings' },
+  { key: 'team', labelAr: 'إعدادات الفريق', labelEn: 'Team Settings', path: '/dashboard/team', category: 'settings' },
+  { key: 'account', labelAr: 'حسابي', labelEn: 'My Account', path: '/dashboard/account', category: 'settings' },
 ];
+
+// Role-based default permissions
+export const ROLE_DEFAULT_PERMISSIONS: Record<string, string[]> = {
+  super_admin: AVAILABLE_PERMISSIONS.map(p => p.key), // All permissions
+  admin: AVAILABLE_PERMISSIONS.map(p => p.key), // All permissions
+  department_manager: [
+    'dashboard', 'tasks', 'meetings', 'chat', 'events', 'manual',
+    'employees', 'delayed', 'balance', 'account'
+  ],
+  sales_staff: [
+    'dashboard', 'leads', 'clients', 'contracts', 'meetings', 'chat', 'account'
+  ],
+  employee: [
+    'dashboard', 'tasks', 'meetings', 'chat', 'account'
+  ],
+};
 
 // Get user's permissions
 export const useUserPermissions = (userId?: string) => {
@@ -43,7 +98,7 @@ export const useUserPermissions = (userId?: string) => {
 // Get current user's permissions (for navigation filtering)
 export const useMyPermissions = () => {
   const { profile, userRole } = useAuth();
-  const role = userRole?.role;
+  const role = userRole?.role || 'employee';
 
   return useQuery({
     queryKey: ['my-permissions', profile?.id, role],
@@ -62,15 +117,30 @@ export const useMyPermissions = () => {
 
       if (error) throw error;
       
-      // If no custom permissions, give default permissions
+      // If no custom permissions, use role-based default permissions
       if (data.length === 0) {
-        return ['dashboard', 'chat', 'account'];
+        return ROLE_DEFAULT_PERMISSIONS[role] || ROLE_DEFAULT_PERMISSIONS.employee;
       }
       
       return data.map(p => p.permission);
     },
     enabled: !!profile?.id,
   });
+};
+
+// Get permissions grouped by category
+export const getPermissionsByCategory = () => {
+  const grouped: Record<string, typeof AVAILABLE_PERMISSIONS> = {};
+  
+  AVAILABLE_PERMISSIONS.forEach(permission => {
+    const category = permission.category || 'other';
+    if (!grouped[category]) {
+      grouped[category] = [];
+    }
+    grouped[category].push(permission);
+  });
+  
+  return grouped;
 };
 
 // Update user's permissions

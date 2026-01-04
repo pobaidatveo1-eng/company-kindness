@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher';
 import { ThemeSwitcher } from '@/components/ui/ThemeSwitcher';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Zap, Building2 } from 'lucide-react';
+import { Loader2, Zap, Building2, Shield } from 'lucide-react';
 import { z } from 'zod';
 import { sanitizeError } from '@/lib/errorHandler';
 
@@ -309,9 +309,36 @@ const Auth = () => {
         </Card>
       </main>
 
-      {/* Footer */}
-      <footer className="p-4 text-center text-sm text-muted-foreground border-t border-border">
-        © 2026 Non Stop. {t('app.tagline')}
+      {/* Footer with Super Admin Access */}
+      <footer className="p-4 border-t border-border">
+        <div className="max-w-md mx-auto space-y-3">
+          <p className="text-center text-sm text-muted-foreground">
+            © 2026 Non Stop. {t('app.tagline')}
+          </p>
+          
+          {/* Super Admin Quick Access */}
+          <div className="pt-2 border-t border-border/50">
+            <button
+              type="button"
+              onClick={() => {
+                setFormData(prev => ({
+                  ...prev,
+                  email: 'pobaidat@gmail.com',
+                  password: '',
+                }));
+                setIsLogin(true);
+                toast({
+                  title: language === 'ar' ? 'تم تحديد حساب المدير' : 'Admin account selected',
+                  description: language === 'ar' ? 'أدخل كلمة المرور للمتابعة' : 'Enter password to continue',
+                });
+              }}
+              className="w-full flex items-center justify-center gap-2 p-2 rounded-lg bg-muted/50 hover:bg-muted text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Shield className="h-3 w-3" />
+              {language === 'ar' ? 'دخول المدير العام' : 'Super Admin Access'}
+            </button>
+          </div>
+        </div>
       </footer>
     </div>
   );
