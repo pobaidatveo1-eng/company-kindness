@@ -174,7 +174,7 @@ export const useNotifications = () => {
     },
   });
 
-  // Create notification (for sending to others)
+  // Create notification using secure RPC function
   const createNotification = useMutation({
     mutationFn: async (data: {
       user_id: string;
@@ -188,33 +188,38 @@ export const useNotifications = () => {
       priority?: NotificationPriority;
       is_urgent_call?: boolean;
     }) => {
-      const { error } = await supabase
-        .from('notifications')
-        .insert({
-          ...data,
-          sound_enabled: true,
-        });
+      const { error } = await supabase.rpc('create_notification', {
+        p_user_id: data.user_id,
+        p_type: data.type,
+        p_title: data.title,
+        p_message: data.message,
+        p_title_ar: data.title_ar || null,
+        p_message_ar: data.message_ar || null,
+        p_reference_id: data.reference_id || null,
+        p_reference_type: data.reference_type || null,
+        p_priority: data.priority || 'normal',
+        p_is_urgent_call: data.is_urgent_call || false,
+      });
 
       if (error) throw error;
     },
   });
 
-  // Send urgent call to user
+  // Send urgent call to user using secure RPC function
   const sendUrgentCall = useMutation({
     mutationFn: async (data: { user_id: string; message: string; message_ar?: string }) => {
-      const { error } = await supabase
-        .from('notifications')
-        .insert({
-          user_id: data.user_id,
-          type: 'urgent_call',
-          title: 'مكالمة عاجلة',
-          title_ar: 'مكالمة عاجلة',
-          message: data.message,
-          message_ar: data.message_ar || data.message,
-          priority: 'urgent' as NotificationPriority,
-          is_urgent_call: true,
-          sound_enabled: true,
-        });
+      const { error } = await supabase.rpc('create_notification', {
+        p_user_id: data.user_id,
+        p_type: 'urgent_call',
+        p_title: 'مكالمة عاجلة',
+        p_message: data.message,
+        p_title_ar: 'مكالمة عاجلة',
+        p_message_ar: data.message_ar || data.message,
+        p_reference_id: null,
+        p_reference_type: null,
+        p_priority: 'urgent',
+        p_is_urgent_call: true,
+      });
 
       if (error) throw error;
     },
